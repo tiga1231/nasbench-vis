@@ -1,0 +1,25 @@
+{
+  "name": "vis-nasbench",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "webpack --mode development",
+    "build": "webpack --mode production"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "d3": "^5.9.7",
+    "webgl-utils": "^1.0.1"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^5.0.4",
+    "html-loader": "^0.5.5",
+    "html-webpack-plugin": "^3.2.0",
+    "shader-loader": "^1.3.1",
+    "webpack": "^4.39.2",
+    "webpack-cli": "^3.3.6"
+  }
+}
