@@ -1,13 +1,14 @@
 precision mediump float;
 
 attribute vec4 a_position;
+attribute float a_selected;
 
 uniform vec2 u_shift;
 uniform vec2 u_scale;
 uniform vec4 u_margin;
 uniform float u_pointsize;
 
-varying vec4 v_color;
+varying float v_selected;
 
 void main(){
   gl_PointSize = u_pointsize;
@@ -21,4 +22,5 @@ void main(){
   gl_Position.x = gl_Position.x * 2.0 - 1.0;
   gl_Position.y = gl_Position.y * 2.0 - 1.0;
 
+  v_selected = a_selected;
 }

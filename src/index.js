@@ -1,16 +1,19 @@
 import * as d3 from "d3";
 import { LinkedView } from "./LinkedView";
+import { LinkedViewController } from "./LinkedViewController";
 
 
 window.onload = function(){
   d3.json('./data/data.json')
   .then(data=>{
       window.data = data;
-
+      
       let x,y;
       let width = window.innerWidth/2-10;
       let height = window.innerHeight/2-10;
       let pointSize = 10.0;
+
+      let controller = new LinkedViewController();
 
       x = data['final_training_time'];
       y = data['108_final_validation_accuracy'];
@@ -18,6 +21,7 @@ window.onload = function(){
         width, 
         height, 
         pointSize,
+        parent: controller,
       });
 
       x = data['final_training_time'];
@@ -27,11 +31,13 @@ window.onload = function(){
           width, 
           height, 
           pointSize,
+          parent: controller,
       });
 
 
       window.lv = lv;
       window.lv2 = lv2;
+      window.controller = controller;
   });
   // global modules for debug in browser
   window.d3 = d3;
