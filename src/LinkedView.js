@@ -17,6 +17,7 @@ export class LinkedView{
     this.width = kwargs.width || window.innerWidth;
     this.height = kwargs.height || window.innerHeight;
     this.margin = kwargs.margin ||  [0.1, 0.9, 0.1, 0.9];//[left, right, bottom, top]
+    this.ylim = kwargs.ylim;
     this.pointSize = kwargs.pointSize || 100.0;
     this.parent = kwargs.parent || null;
     this.id = kwargs.id || "" + Math.floor(Math.random() * 1e9);
@@ -47,20 +48,29 @@ export class LinkedView{
   plot(isFirst){
     let x = this.x;
     let y = this.y;
+    let n = x.length;
 
     let gl = this.gl;
     let margin = this.margin;
     let pointSize = this.pointSize;
 
     //data
-    let n = 10000;
     this.xy = Array(n).fill().map((d,i)=>{
       return [x[i], y[i]];
     });
+
     let xmax = x.reduce((a,b)=>Math.max(a,b), x[0]);
     let xmin = x.reduce((a,b)=>Math.min(a,b), x[0]);
-    let ymax = y.reduce((a,b)=>Math.max(a,b), y[0]);
-    let ymin = y.reduce((a,b)=>Math.min(a,b), y[0]);
+
+    let ymin, ymax;
+    if(this.ylim === undefined){
+      ymax = y.reduce((a,b)=>Math.max(a,b), y[0]);
+      ymin = y.reduce((a,b)=>Math.min(a,b), y[0]);
+    }else{
+      ymin = this.ylim[0];
+      ymax = this.ylim[1];
+    }
+    
 
     //webgl plot
     gl_utils.clear(gl, CLEAR_COLOR);
@@ -145,8 +155,11 @@ export class LinkedView{
 
   initGL(canvas, fs, vs){
     let gl = getGLprog(canvas, fs, vs);
+
+
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    
     return gl;
   }
 }
