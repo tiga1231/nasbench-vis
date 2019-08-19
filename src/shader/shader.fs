@@ -1,14 +1,16 @@
-attribute vec4 a_position;
-
-uniform vec2 u_shift;
-uniform vec2 u_scale;
+precision mediump float;
 
 void main(){
-  gl_PointSize = 10.0;
-  gl_Position = a_position;
-  gl_Position.x = (gl_Position.x - u_shift.x) / u_scale.x;
-  gl_Position.y = (gl_Position.y - u_shift.y) / u_scale.y;
+  gl_FragColor = vec4(1.0,1.0,1.0,1.0);
+  vec2 loc = gl_PointCoord.xy;
+  vec2 center = vec2(0.5,0.5);
+  float radius = length(loc-center);
+  float alpha_multiplier;
 
-  gl_Position.x = gl_Position.x * 2.0 - 1.0;
-  gl_Position.y = gl_Position.y * 2.0 - 1.0;
+  gl_FragColor.rgb = mix(
+    vec3(0.3, 0.3, 0.7), 
+    vec3(1.0, 1.0, 1.0), 
+    smoothstep(0.4, 0.5, radius));
+  alpha_multiplier = smoothstep(0.5, 0.4, radius);
+  gl_FragColor.a = alpha_multiplier;
 }
