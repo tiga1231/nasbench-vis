@@ -10,7 +10,7 @@ void main(){
   gl_FragColor.rgb = mix(
     vec3(0.3, 0.3, 0.7), 
     vec3(1.0, 1.0, 1.0), 
-    smoothstep(0.4, 0.5, radius));
-  alpha_multiplier = smoothstep(0.5, 0.4, radius);
+    smoothstep(0.3, 0.5, radius));
+  alpha_multiplier = smoothstep(0.5, 0.3, radius);
   gl_FragColor.a = alpha_multiplier;
 }

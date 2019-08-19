@@ -20,6 +20,7 @@ function initAttr(gl, name){
   return loc;
 }
 
+
 function initUniform(gl, name){
   initGLData(gl, name);
   let loc;

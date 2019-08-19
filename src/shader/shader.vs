@@ -21,8 +21,4 @@ void main(){
   gl_Position.x = gl_Position.x * 2.0 - 1.0;
   gl_Position.y = gl_Position.y * 2.0 - 1.0;
 
-
-
-  
-
 }

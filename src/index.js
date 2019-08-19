@@ -8,25 +8,25 @@ window.onload = function(){
       window.data = data;
 
       let x,y;
-      let width = window.innerWidth/2-20;
-      let height = window.innerHeight/2-20;
-      let pointSize = 50.0;
+      let width = window.innerWidth/2-10;
+      let height = window.innerHeight/2-10;
+      let pointSize = 10.0;
 
       x = data['final_training_time'];
       y = data['108_final_validation_accuracy'];
       let lv = new LinkedView(x, y, {
-        canvasWidth: width,
-        canvasHeight: height,
-        pointSize: pointSize,
+        width, 
+        height, 
+        pointSize,
       });
 
       x = data['final_training_time'];
       y = data['36_final_validation_accuracy'];
 
       let lv2 = new LinkedView(x, y, {
-        canvasWidth: width,
-        canvasHeight: height,
-        pointSize: pointSize,
+          width, 
+          height, 
+          pointSize,
       });
 
 
