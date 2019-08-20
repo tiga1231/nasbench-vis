@@ -11,6 +11,7 @@ uniform float u_pointsize;
 varying float v_selected;
 
 void main(){
+  
   gl_PointSize = u_pointsize * (a_selected>0.5? 1.5:1.0);
   gl_Position = a_position;
   gl_Position.x = (gl_Position.x - u_shift.x) / u_scale.x;

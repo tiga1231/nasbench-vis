@@ -82,6 +82,10 @@ export class LinkedView{
       gl_utils.update_uniform(gl, 'u_scale', [xmax-xmin, ymax-ymin]);
       gl_utils.update_uniform(gl, 'u_pointsize', pointSize);
     }
+
+    gl_utils.update_uniform(gl, 'u_mode', 0.0); //background mode
+    gl.drawArrays(gl.POINTS, 0, n);
+    gl_utils.update_uniform(gl, 'u_mode', 1.0); //foreground mode
     gl.drawArrays(gl.POINTS, 0, n);
 
     if(isFirst){

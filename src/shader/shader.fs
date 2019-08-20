@@ -1,7 +1,13 @@
 precision mediump float;
 varying float v_selected;
+uniform float u_mode;
 
 void main(){
+
+  if (u_mode > 0.5 && v_selected < 0.5){
+    discard;
+  }
+  
   gl_FragColor = vec4(1.0,1.0,1.0,1.0);
   vec2 loc = gl_PointCoord.xy;
   vec2 center = vec2(0.5,0.5);
