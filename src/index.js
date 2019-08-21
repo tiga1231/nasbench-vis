@@ -11,27 +11,24 @@ window.onload = function(){
       window.data = data;
 
       //for debugging with small data
-      for(let k in data){
-        data[k] = data[k].slice(0,1000);
-      }
+      // for(let k in data){
+      //   data[k] = data[k].slice(0,30000);
+      // }
 
       let x,y, lv;
       let n = data['final_training_time'].length;
 
-      let width = window.innerWidth/4-6;
-      let height = window.innerHeight/3;
-      let pointSize = 10.0;
-
       let controller = new LinkedViewController();
+      
       let kwargs_base = {
-        width, 
-        height, 
-        pointSize,
+        width: window.innerWidth/4-6, 
+        height: window.innerHeight/3, 
+        pointSize: 8.0,
         parent: controller,
+        margin: [0.1, 0.95, 0.1, 0.95],
       };
+
       let kwargs;
-
-
       kwargs = Object.assign({}, kwargs_base);
       kwargs.ylim = [0,1];
 

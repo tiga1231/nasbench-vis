@@ -1,7 +1,13 @@
+import * as d3 from "d3";
+
 export class LinkedViewController{
   constructor(){
     this.children = {};
     this.selected = undefined;
+    this.div = d3.select('body')
+    .append('div')
+    .attr('class', 'text-body');
+    this.p = this.div.append('p');
   }
 
   select(child){
@@ -34,6 +40,8 @@ export class LinkedViewController{
         });
       }
     }
+
+    this.p.text(`selected: ${this.selected.reduce((a,b)=>a+b)}/${this.selected.length}`);
 
     for (let childId in this.children){
       this.children[childId].highlight(this.selected.map(d=>d?1:0));
