@@ -4,17 +4,33 @@ export class LinkedViewController{
     this.selected = undefined;
   }
 
-  select(child, id){
-    if( !this.children.hasOwnProperty(id)){
+  select(child){
+    if( !this.children.hasOwnProperty(child.id)){
       this.children[child.id] = child;
     }
 
     // compute intersection
-    this.selected = this.children[child.id].selected;
+    this.selected = null;
     for (let childId in this.children){
-      if (childId !== child.id){
+      if (this.selected === null){
+        if(this.children[childId].mode == 'line'){
+          this.selected = [];//this.children[childId].selected;
+          for(let i=0; i<this.children[childId].selected.length; i+=6){
+            this.selected.push(this.children[childId].selected[i]);
+          }
+        }else{          
+          this.selected = this.children[childId].selected;
+        }
+        continue;
+      }
+
+      if(this.children[childId].mode == 'line'){
         this.selected = this.selected.map((d,i)=>{
-          return d && this.children[childId].selected[i];
+          return d && this.children[childId].selected[i*6];
+        });
+      }else{
+        this.selected = this.selected.map((d,i)=>{
+            return d && this.children[childId].selected[i];
         });
       }
     }

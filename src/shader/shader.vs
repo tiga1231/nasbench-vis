@@ -23,7 +23,7 @@ void main(){
   gl_Position.x = gl_Position.x * 2.0 - 1.0;
   gl_Position.y = gl_Position.y * 2.0 - 1.0;
   
-  gl_Position.z = (a_selected>0.5? 0.9:0.1);
+  // gl_Position.z = (a_selected>0.5? 0.9:0.1);
 
   v_selected = a_selected;
 }

@@ -45,8 +45,10 @@ export function update_data(gl, name, data){
   }
 
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, Float32Array.from(data.flat()), gl.STATIC_DRAW);
-
+  let data0 = Float32Array.from(data.flat());
+  gl.bufferData(gl.ARRAY_BUFFER, data0, gl.STATIC_DRAW);
+  gl.data[name].data = data0;
+  
   let dim;
   if (typeof(data[0]) == 'number'){
     dim = 1;

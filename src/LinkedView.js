@@ -1,5 +1,6 @@
 import * as gl_utils from "./gl_utils";
 import getGLprog from "webgl-utils";
+import {zip} from './utils';
 
 const DPR = window.devicePixelRatio;
 const CLEAR_COLOR = [0.2, 0.2, 0.2, 1.0];
@@ -11,17 +12,25 @@ export class LinkedView{
     var vertexShader = require("./shader/shader.vs");
     var fragmentShader = require("./shader/shader.fs");
 
-    this.x = x;
-    this.y = y;
+
 
     this.width = kwargs.width || window.innerWidth;
     this.height = kwargs.height || window.innerHeight;
     this.margin = kwargs.margin ||  [0.1, 0.9, 0.1, 0.9];//[left, right, bottom, top]
     this.ylim = kwargs.ylim;
+    this.xlim = kwargs.xlim;
     this.pointSize = kwargs.pointSize || 100.0;
     this.parent = kwargs.parent || null;
     this.id = kwargs.id || "" + Math.floor(Math.random() * 1e9);
+    this.mode = kwargs.mode || 'point';
 
+    if(this.mode == 'point'){
+      this.x = x;
+      this.y = y;
+    }else{
+      this.x = x.map(d=>[d[0], d[1], d[1], d[2], d[2], d[3]]);
+      this.y = y.map(d=>[d[0], d[1], d[1], d[2], d[2], d[3]]);
+    }
     this.div = d3.select('body')
     .append('div')
     .attr('class', 'plot');
@@ -40,7 +49,12 @@ export class LinkedView{
     .style('height', this.height);
 
     this.gl = this.initGL(this.canvas.node(), fragmentShader, vertexShader);
-    this.selected = Array(this.x.length).fill(true);
+
+    if(this.mode == 'point'){
+      this.selected = Array(this.x.length).fill(true);
+    }else{ //line
+      this.selected = Array(this.x.length * 6).fill(true);
+    }
     this.plot(true);
   }
 
@@ -55,20 +69,21 @@ export class LinkedView{
     let pointSize = this.pointSize;
 
     //data
-    this.xy = Array(n).fill().map((d,i)=>{
-      return [x[i], y[i]];
-    });
+    this.xy = zip(x.flat(),y.flat());
 
-    let xmax = x.reduce((a,b)=>Math.max(a,b), x[0]);
-    let xmin = x.reduce((a,b)=>Math.min(a,b), x[0]);
-
-    let ymin, ymax;
-    if(this.ylim === undefined){
-      ymax = y.reduce((a,b)=>Math.max(a,b), y[0]);
-      ymin = y.reduce((a,b)=>Math.min(a,b), y[0]);
+    if(this.xlim === undefined){
+      this.xmin = x.flat().reduce((a,b)=>Math.min(a,b), x.flat()[0]);
+      this.xmax = x.flat().reduce((a,b)=>Math.max(a,b), x.flat()[0]);
     }else{
-      ymin = this.ylim[0];
-      ymax = this.ylim[1];
+      this.xmin = this.xlim[0];
+      this.xmax = this.xlim[1];
+    }
+    if(this.ylim === undefined){
+      this.ymax = y.flat().reduce((a,b)=>Math.max(a,b), y.flat()[0]);
+      this.ymin = y.flat().reduce((a,b)=>Math.min(a,b), y.flat()[0]);
+    }else{
+      this.ymin = this.ylim[0];
+      this.ymax = this.ylim[1];
     }
     
 
@@ -76,43 +91,57 @@ export class LinkedView{
     gl_utils.clear(gl, CLEAR_COLOR);
     if(isFirst){
       gl_utils.update_data(gl, 'a_position',  this.xy);
-      gl_utils.update_data(gl, 'a_selected', Array(n).fill(1.0));
+      if (this.mode == 'point'){
+        gl_utils.update_data(gl, 'a_selected', Array(n).fill(1.0));
+      }else{
+        gl_utils.update_data(gl, 'a_selected', Array(n*6).fill(1.0));
+      }
       gl_utils.update_uniform(gl, 'u_margin', margin); 
-      gl_utils.update_uniform(gl, 'u_shift', [xmin, ymin]);
-      gl_utils.update_uniform(gl, 'u_scale', [xmax-xmin, ymax-ymin]);
+      gl_utils.update_uniform(gl, 'u_shift', [this.xmin, this.ymin]);
+      gl_utils.update_uniform(gl, 'u_scale', [this.xmax-this.xmin, this.ymax-this.ymin]);
       gl_utils.update_uniform(gl, 'u_pointsize', pointSize);
     }
 
-    gl_utils.update_uniform(gl, 'u_mode', 0.0); //background mode
-    gl.drawArrays(gl.POINTS, 0, n);
-    gl_utils.update_uniform(gl, 'u_mode', 1.0); //foreground mode
-    gl.drawArrays(gl.POINTS, 0, n);
+    if (this.mode == 'line'){
+      gl_utils.update_uniform(gl, 'u_mode', 1.0); //line mode
+      gl_utils.update_uniform(gl, 'u_isfg', 0.0); //background mode
+      gl.drawArrays(gl.LINES, 0, this.xy.length);
+      gl_utils.update_uniform(gl, 'u_isfg', 1.0); //foreground mode
+      gl.drawArrays(gl.LINES, 0, this.xy.length);
+    }
+
+    gl_utils.update_uniform(gl, 'u_mode', 0.0); //point mode
+    gl_utils.update_uniform(gl, 'u_isfg', 0.0); //background mode
+    gl.drawArrays(gl.POINTS, 0, this.xy.length);
+    gl_utils.update_uniform(gl, 'u_isfg', 1.0); //foreground mode
+    gl.drawArrays(gl.POINTS, 0, this.xy.length);
+    
 
     if(isFirst){
       //overlay (svg) plot
-      this.sx = d3.scaleLinear().domain([xmin, xmax])
+      this.sx = d3.scaleLinear().domain([this.xmin, this.xmax])
       .range([margin[0]*this.width, margin[1]*this.width]);
-      this.sy = d3.scaleLinear().domain([ymin, ymax])
+      this.sy = d3.scaleLinear().domain([this.ymin, this.ymax])
       .range([(1-margin[2])*this.height, (1-margin[3])*this.height]);
 
       //axis
       this.ax = d3.axisBottom(this.sx);
       this.gx = this.overlay.append('g')
       .attr('class', 'x-axis')
-      .attr('transform', `translate(0, ${this.sy(ymin)})`)
+      .attr('transform', `translate(0, ${this.sy(this.ymin)})`)
       .call(this.ax);
 
       this.ay = d3.axisLeft(this.sy);
       this.gy = this.overlay.append('g')
       .attr('class', 'y-axis')
-      .attr('transform', `translate(${this.sx(xmin)}, 0)`)
+      .attr('transform', `translate(${this.sx(this.xmin)}, 0)`)
       .call(this.ay);
 
       //brush
       this.brush = d3.brush()
       .extent([
-        [this.sx(xmin)-10,this.sy(ymax)-10], 
-        [this.sx(xmax)-10,this.sy(ymin)+10]
+        [this.sx(this.xmin)-10,this.sy(this.ymax)-10], 
+        [this.sx(this.xmax)+10,this.sy(this.ymin)+10]
       ])
       .on("brush", ()=>{
         let selection = d3.event.selection;
@@ -146,6 +175,12 @@ export class LinkedView{
         return x0 <= d[0] && d[0] <= x1
             && y0 <= d[1] && d[1] <= y1;
       });
+      if(this.mode == 'line'){
+        this.selected = this.selected.map((d,i, arr)=>{
+          let sub = arr.slice(Math.floor(i/6)*6, Math.floor(i/6)*6+6);
+          return Math.max(...sub); 
+        });
+      }
     }
     if(this.parent !== null){
       this.parent.select(this);
@@ -153,7 +188,14 @@ export class LinkedView{
   }
 
   highlight(selection){
-    gl_utils.update_data(this.gl, 'a_selected', selection);
+    if(this.mode == 'point'){
+      gl_utils.update_data(this.gl, 'a_selected', selection);
+    }else if(this.mode == 'line'){
+      gl_utils.update_data(this.gl, 'a_selected', 
+        zip(selection,selection,selection,
+          selection,selection,selection).flat()
+      );
+    }
     this.plot(false);
   }
 
