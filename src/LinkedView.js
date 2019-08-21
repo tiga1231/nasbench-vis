@@ -102,6 +102,11 @@ export class LinkedView{
       gl_utils.update_uniform(gl, 'u_pointsize', pointSize);
     }
 
+
+    gl_utils.update_uniform(gl, 'u_mode', 0.0); //point mode
+    gl_utils.update_uniform(gl, 'u_isfg', 0.0); //background mode
+    gl.drawArrays(gl.POINTS, 0, this.xy.length);
+
     if (this.mode == 'line'){
       gl_utils.update_uniform(gl, 'u_mode', 1.0); //line mode
       gl_utils.update_uniform(gl, 'u_isfg', 0.0); //background mode
@@ -111,8 +116,6 @@ export class LinkedView{
     }
 
     gl_utils.update_uniform(gl, 'u_mode', 0.0); //point mode
-    gl_utils.update_uniform(gl, 'u_isfg', 0.0); //background mode
-    gl.drawArrays(gl.POINTS, 0, this.xy.length);
     gl_utils.update_uniform(gl, 'u_isfg', 1.0); //foreground mode
     gl.drawArrays(gl.POINTS, 0, this.xy.length);
     

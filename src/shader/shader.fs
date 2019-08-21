@@ -31,9 +31,10 @@ void main(){
     gl_FragColor.a = alpha_multiplier;
   }else{//line mode
     if(u_isfg > 0.5){
-        gl_FragColor = vec4(0.5,0.5,0.5, 0.5);
+        // gl_FragColor = vec4(0.5,0.5,0.5, 1.0);
+        gl_FragColor = vec4(1.0,1.0,1.0, 0.3);
       }else{
-        gl_FragColor = vec4(0.22,0.22,0.22, 1.0);
+        gl_FragColor = vec4(0.22,0.22,0.22, 0.1);
       }
   }
   
