@@ -14,6 +14,7 @@ export class LinkedView{
 
 
 
+    this.graphView = kwargs.graphView;
     this.width = kwargs.width || window.innerWidth;
     this.height = kwargs.height || window.innerHeight;
     this.margin = kwargs.margin ||  [0.1, 0.9, 0.1, 0.9];//[left, right, bottom, top]
@@ -40,6 +41,14 @@ export class LinkedView{
     .attr('class', 'overlay')
     .attr('width', this.width)
     .attr('height', this.height);
+    
+    this.highlighter = this.overlay
+    .append('circle')
+    .attr('r', 6)
+    .attr('fill', 'none')
+    .attr('stroke-width', 2)
+    .attr('stroke', 'yellow')
+    .style('opacity', 0.0);
 
     this.canvas = this.div
     .append('canvas')
@@ -163,6 +172,40 @@ export class LinkedView{
       .attr('class', 'brush')
       .call(this.brush);
 
+
+      this.overlay.on('mousemove', ()=>{
+        let x = this.sx.invert(d3.event.layerX);
+        let y = this.sy.invert(d3.event.layerY);
+        //nearest neighbor
+        let minDist = Infinity;
+        let nearestNeighbor = null;
+        for (let i=0; i<this.x.length; i++){
+          let dist = Math.pow((this.x[i]-x)/(this.sx.domain()[1]-this.sx.domain()[0]), 2) 
+          + Math.pow((this.y[i]-y)/(this.sy.domain()[1]-this.sy.domain()[0]), 2);
+          if(dist < minDist && this.parent.selected[i]){
+            nearestNeighbor = i;
+            minDist = dist;
+          }
+        }
+
+        // this.highlighter
+        // .style('opacity', 1)
+        // .attr('cx', this.sx(this.x[nearestNeighbor]))
+        // .attr('cy', this.sy(this.y[nearestNeighbor]));
+        this.parent.hover(nearestNeighbor);
+
+        // setTimeout(()=>{
+        //   this.highlighter
+        //   .style('opacity', 0);
+        // }, 50);
+
+        if(this.graphView !== undefined){
+
+          this.graphView.updateGraph(nearestNeighbor);
+        }
+      });
+
+
       if(this.parent !== null){
         this.parent.select(this);
       }
@@ -204,7 +247,6 @@ export class LinkedView{
 
   initGL(canvas, fs, vs){
     let gl = getGLprog(canvas, fs, vs);
-
 
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);

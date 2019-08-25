@@ -48,5 +48,17 @@ export class LinkedViewController{
     }
   }
 
+  hover(i){
+    for (let childId in this.children){
+      let child = this.children[childId];
+      
+      child.highlighter
+      .style('opacity', 1)
+      .attr('cx', child.sx(child.x[i]))
+      .attr('cy', child.sy(child.y[i]));
+    }
+    
+  }
+
 
 }
