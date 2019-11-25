@@ -74,11 +74,14 @@ export class GraphView{
     this.simulation = d3.forceSimulation(this.graph.nodes)
       .force('link', d3.forceLink(this.graph.edges)
         .id(d=>d.id)
-        .distance(link=>Math.min(this.height, this.width)/1000 * Math.abs(link.source.id - link.target.id))
+        .distance(link=>
+          Math.min(this.height, this.width)/1000 
+          * Math.sqrt(Math.abs(link.source.id - link.target.id))
+        )
       )
       .force('charge', d3.forceManyBody()
         .strength(d=>{
-          let r = -(6-Math.abs(d.id-3)) * 550;
+          let r = -(6-Math.abs(d.id - this.graph.nodes.length/2)) * 550;
           return r;
         })
       )

@@ -9,14 +9,14 @@ import { GraphView } from "./GraphView";
 
 window.onload = function(){
   // d3.json('./data/data-10k.json')
-  d3.json('./data/data-20k.json')
-  // d3.json('./data/data-full.json')
+  // d3.json('./data/data-20k.json')
+  d3.json('./data/data-full.json')
   .then(data=>{
       window.data = data;
 
       //for debugging with small data
       for(let k in data){
-        data[k] = data[k].slice(0,20000);
+        data[k] = data[k].slice(0,50000);
       }
 
       let x,y;
@@ -46,13 +46,13 @@ window.onload = function(){
       let lv = new LinkedView(x, y, kwargs);
       x = data['trainable_parameters'].map(d=>Math.log(d));
       y = data['12_final_validation_accuracy'];
-      let lv1 = new LinkedView(x, y, kwargs);
-      x = data['trainable_parameters'].map(d=>Math.log(d));
-      y = data['36_final_validation_accuracy'];
       let lv2 = new LinkedView(x, y, kwargs);
       x = data['trainable_parameters'].map(d=>Math.log(d));
-      y = data['108_final_validation_accuracy'];
+      y = data['36_final_validation_accuracy'];
       let lv3 = new LinkedView(x, y, kwargs);
+      x = data['trainable_parameters'].map(d=>Math.log(d));
+      y = data['108_final_validation_accuracy'];
+      let lv4 = new LinkedView(x, y, kwargs);
 
       d3.select('body').append('br');
 
@@ -61,7 +61,7 @@ window.onload = function(){
       kwargs.width /= 3;
       x = data['trainable_parameters'].map(d=>Math.log(d));
       y = data['final_training_time'];
-      let lv4 = new LinkedView(x, y, kwargs);
+      let lv5 = new LinkedView(x, y, kwargs);
 
 
 
@@ -90,7 +90,7 @@ window.onload = function(){
       y = data['embedding'].map(d=>d[1]);
       kwargs = Object.assign({}, kwargs_base);
       kwargs.width /= 3;
-      let lv5 = new LinkedView(x, y, kwargs);
+      let lv6 = new LinkedView(x, y, kwargs);
 
 
 
@@ -105,6 +105,7 @@ window.onload = function(){
       lv3.graphView = gv;
       lv4.graphView = gv;
       lv5.graphView = gv;
+      lv6.graphView = gv;
 
       // x = zip(
       //   data['final_training_time'].map(d=>d*4/108),

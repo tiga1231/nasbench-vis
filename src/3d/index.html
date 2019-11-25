@@ -20,19 +20,32 @@
 
 
 let scene = new THREE.Scene();
-let camera = new THREE.PerspectiveCamera( 75, 
+scene.fog = new THREE.FogExp2(0x000000, 0.01);
+// scene.fog = new THREE.Fog(0x000000, 1, 50);
+
+let camera = new THREE.PerspectiveCamera( 30, 
     window.innerWidth/window.innerHeight, 
-    0.1, 1000);
-camera.position.set(0,0,5);
+    1, 1000);
+
+camera.position.set(0,0,30);
 camera.lookAt(0,0,0);
 
-let renderer = new THREE.WebGLRenderer({ antialias: true });
+let renderer = new THREE.WebGLRenderer({ 
+    antialias: true, 
+    // alpha: true,
+});
+renderer.setClearColor(0x333333, 1.0);
 renderer.setSize(window.innerWidth, window.innerHeight);
+// let gl = renderer.getContext();
+// gl.enable(gl.BLEND || gl.DEPTH_TEST);
+// gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+
 document.body.appendChild(renderer.domElement);
 
 var orbit = new THREE.OrbitControls( camera, renderer.domElement );
 // orbit.enableZoom = false;
-
+orbit.enablePan = true;
 //=============================
 
 let vertexShader = `
@@ -40,46 +53,58 @@ varying vec3 v_color;
 attribute vec3 color;
 void main() {
     v_color = color;
-    gl_PointSize = 2.0;
+    gl_PointSize = 10.0;
+
     vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * modelViewPosition; 
 }
 `;
 let fragmentShader = `
 varying vec3 v_color;
+
+uniform sampler2D pointTexture;
+
 void main() {
     gl_FragColor = vec4(v_color, 1.0);
+    gl_FragColor = gl_FragColor * texture2D(pointTexture, gl_PointCoord);
+    if ( gl_FragColor.a < ALPHATEST ) discard;
 }
 `;
 
 let objectGroup = new THREE.Group();
-d3.json('embedding-10k.json').then(data=>{
+d3.json('data/embedding-full-50neighbor.json').then(data=>{
     window.data = data;
+
+    //color
     let cmap = d3.interpolateViridis;
+    let sc = d3.scaleQuantize()
+    .domain([0.75,1])
+    .range([cmap(0), cmap(0.25),cmap(0.5), cmap(0.75),cmap(1.0)]);
+    // .range([cmap(1.0), cmap(0.75), cmap(0.5), cmap(0.25), cmap(0),  ]);
+    
+    window.sc = sc;
+
     let colors = data.accuracy.map(a=>{
-        let c = d3.color(cmap(a));
+        let c = d3.color(sc(a));
         return [c.r/255, c.g/255, c.b/255];
     });
-    console.log(colors);
-    let geometry = new THREE.BufferGeometry();
-    let material = new THREE.ShaderMaterial({
-        vertexShader,
-        fragmentShader,
+
+
+    let geometry = new THREE.Geometry();
+    geometry.vertices = data.embedding.map(d=>new THREE.Vector3(...d.slice(0,3)));
+    geometry.colorsNeedUpdate = true;
+    geometry.colors = colors.map(d=>new THREE.Color(...d));
+    window.geometry = geometry;
+
+    let material = new THREE.PointsMaterial({
+        vertexColors: THREE.VertexColors,
+        size: 0.05
     });
-    geometry.addAttribute( 'position', 
-        new THREE.Float32BufferAttribute( 
-            data.embedding.reduce((a,b)=>a.concat(b), []), 3 
-    ));
-
-    geometry.addAttribute( 'color', 
-        new THREE.Float32BufferAttribute( 
-            colors.reduce((a,b)=>a.concat(b), []), 3 
-    ));
-
-    
+    window.material = material;
 
     let pointCloud = new THREE.Points(geometry, material);
     objectGroup.add(pointCloud);
+
 
 })
 scene.add(objectGroup);
@@ -88,20 +113,18 @@ scene.add(objectGroup);
 
 //=============================
 
-let light0 = new THREE.AmbientLight( 0xffffff, 0.5, 0 );
-scene.add( light0 );
+// let light0 = new THREE.AmbientLight( 0xffffff, 0.5, 0 );
+// scene.add( light0 );
 
-let light1 = new THREE.DirectionalLight( 0xffffff, 0.4);
-light1.position.set( -50, 50, 80 );
-scene.add( light1 );
+// let light1 = new THREE.DirectionalLight( 0xffffff, 0.4);
+// light1.position.set( -50, 50, 80 );
+// scene.add( light1 );
 
 //=============================
 
 function animate(){
     requestAnimationFrame(animate);
-
-    // objectGroup.rotation.y += 0.004;
-    // objectGroup.rotation.y += 0.0015;
+    objectGroup.rotation.y += 0.001;
 
     renderer.render(scene, camera);
 }
