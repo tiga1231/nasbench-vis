@@ -3,6 +3,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebPackPlugin = require("html-webpack-plugin");
 
 module.exports = {
+  // entry: './src/nas-101/index.js',
   entry: './src/index.js',
   watch: true,
   

@@ -11,7 +11,8 @@ d3.selection.prototype.moveToFront = function() {
 
 function drag(simulation){
   function dragstarted(d) {
-    if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+    if (!d3.event.active && simulation)
+      simulation.alphaTarget(0.3).restart();
     d.fx = d.x;
     d.fy = d.y;
   }
@@ -20,7 +21,7 @@ function drag(simulation){
     d.fy = d3.event.y;
   }
   function dragended(d) {
-    if (!d3.event.active)
+    if (!d3.event.active && simulation)
       simulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
@@ -35,35 +36,40 @@ function drag(simulation){
 
 export class GraphView{
   constructor(kwargs){
-    this.op2text = {
-      '-1': 'input', 
-      '-2': 'output', 
-       '0': 'conv3x3',
-       '1': 'conv1x1',
-       '2': 'maxpool'
-    };
+
+  
+
     this.sc = d3.scaleOrdinal(
-      ['#eee', '#eee', '#7fc97f','#beaed4','#fdc086','#ffff99','#386cb0']
-    )
-    .domain([-1, -2, 0, 1, 2]);
+      ['black', 'white', d3.schemeAccent[0], d3.schemeAccent[1], d3.schemeAccent[3]]
+    ).domain(['none', 'skip_connect', 'nor_conv_1x1', 'nor_conv_3x3', 'avg_pool_3x3'])
 
     this.data = kwargs.data; 
     this.i = kwargs.i || 0;
-    //graph = {nodes:..., edges:...}
 
-    this.width = kwargs.width || 500;
-    this.height = kwargs.height || 500;
+    if(kwargs.svg === undefined){
+      this.width = kwargs.width || 500;
+      this.height = kwargs.height || 500;
+      this.svg = d3.select('body').append('svg')
+      .attr('width', this.width)
+      .attr('height', this.height)
+      .style('background', '#444');
+    }else{
+      this.svg = kwargs.svg;
+      this.width = +this.svg.attr('width');
+      this.height = +this.svg.attr('height');
+    }
 
-    this.sx = d3.scaleLinear().domain([0,6]).range([0,this.width]);
-    this.sy = d3.scaleLinear().domain([0,6]).range([10,this.height-10]);
-    
-    this.graph = this.makeGraph(this.data.adjacency[this.i], this.data.operations[this.i]); 
+    this.sx = d3.scaleLinear()
+      .domain([0,1,2,3])
+      .range([10,10,this.width/2,this.width-10]);
+    this.sy = d3.scaleLinear()
+      .domain([0,1,2,3])
+      .range([10,this.height-10,this.height/2,this.height/2]);
+
+    this.graph = this.makeGraph(this.data.ops[this.i]); 
 
 
-    this.svg = d3.select('body').append('svg')
-    .attr('width', this.width)
-    .attr('height', this.height)
-    .style('background', '#444');
+   
 
     this.svg.append('defs').html(`
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="2" orient="auto" markerUnits="strokeWidth">
@@ -75,13 +81,13 @@ export class GraphView{
       .force('link', d3.forceLink(this.graph.edges)
         .id(d=>d.id)
         .distance(link=>
-          Math.min(this.height, this.width)/1000 
+          Math.min(this.height, this.width)/10 
           * Math.sqrt(Math.abs(link.source.id - link.target.id))
         )
       )
       .force('charge', d3.forceManyBody()
         .strength(d=>{
-          let r = -(6-Math.abs(d.id - this.graph.nodes.length/2)) * 550;
+          let r = -(6-Math.abs(d.id - this.graph.nodes.length/2)) * 750;
           return r;
         })
       )
@@ -92,44 +98,56 @@ export class GraphView{
       .force('x', d3.forceX()
         .strength(1.7).x(d=>this.sx(d.id))
       );
+      this.simulation.stop();
 
     
     this.plot();
   }
 
-  makeGraph(adj, op, baseGraph){
-    op = op.filter(d=>d!=-3);
+  makeGraph(ops, baseGraph){
     let res = baseGraph || {};
-    res.nodes = res.nodes ? res.nodes.slice(0,op.length) : [];
-    for(let i=0; i<op.length; i++){
+    res.nodes = res.nodes ? res.nodes : [];
+    let n = ops.length;
+    ops = [
+      [null, ops[0], ops[1], ops[2]],
+      [null,  null,  ops[3], ops[4]],
+      [null,  null,  null,   ops[5]],
+      [null,  null,  null,   null  ]
+    ];
+    for(let i=0; i<ops[0].length; i++){
       if(res.nodes[i] !== undefined){
         res.nodes[i].id = i;
-        res.nodes[i].op = op[i];
-        
       }else{
         res.nodes.push({
           id: i,
-          op: op[i],
         });
-        res.nodes[i].x = this.sx((Math.random()-0.5)*2 + 2.5);
+        res.nodes[i].x = this.sx(i);
         res.nodes[i].y = this.sy(i);
       }
     }
 
-    res.edges = [];
-    for (let i=0; i<op.length; i++){
-      for (let j=0; j<op.length; j++){
-        if(adj[i][j] == 1){
-          let a = {source: i, target: j};
+    res.edges = res.edges ? res.edges : [];
+    //complete DAG
+    let k=0;
+    for (let i=0; i<res.nodes.length; i++){
+      for (let j=i+1; j<res.nodes.length; j++){
+        let a = {source: i, target: j, op:ops[i][j]};
+        if(res.edges[k] !== undefined){
+          res.edges[k].source = a.source;
+          res.edges[k].target = a.target;
+          res.edges[k].op = a.op;
+        }else{
           res.edges.push(a);
         }
+        k+=1;
       }
     }
+    window.graph = res;
     return res;
   }
 
   updateGraph(i){
-    this.graph = this.makeGraph(this.data.adjacency[i], this.data.operations[i], this.graph);
+    this.graph = this.makeGraph(this.data.ops[i], this.graph);
     this.simulation.nodes(this.graph.nodes);
     this.simulation.force('link').links(this.graph.edges);
     this.plot();
@@ -137,30 +155,44 @@ export class GraphView{
 
   plot(){
 
-    if(this.graph.nodes.length !== this.sx.domain()[1]){ // number of node changes
-      this.sx = d3.scaleLinear().domain([-0.5,this.graph.nodes.length]).range([0,this.width]);
-      this.sy = d3.scaleLinear().domain([-0.5,this.graph.nodes.length]).range([0,this.height]);
-    }
     
     this.svg.selectAll('.link')
     .data(this.graph.edges)
     .exit()
     .remove();
 
-    this.svg.selectAll('.link')
+    let newLinks = this.svg.selectAll('.link')
     .data(this.graph.edges)
     .enter()
-    .append('line')
-    .attr('class', 'link')
+    .append('g')
+    .attr('class', 'link');
+
+    newLinks.append('text')
+    .attr('alignment-baseline', `baseline`)
+    .attr('text-anchor', `middle`);
+
+    newLinks.append('line')
     .attr('stroke-width', 2)
-    .attr('stroke', 'white')
     .attr('marker-end', 'url(#arrow)');
+
     this.links = this.svg.selectAll('.link');
+
+    this.links.selectAll('line')
+    .attr('stroke', (d,i)=>{
+      return this.sc(d.op);
+    });
+
+    this.links
+    .selectAll('text')
+    .attr('fill', d=>this.sc(d.op))
+    .text(d=>d.op);
+
 
     this.svg.selectAll('.node')
     .data(this.graph.nodes)
     .exit()
     .remove();
+
     let newNodes = this.svg.selectAll('.node')
     .data(this.graph.nodes)
     .enter().append('g')
@@ -174,29 +206,92 @@ export class GraphView{
     .attr('alignment-baseline', `middle`);
 
     this.nodes = this.svg.selectAll('.node');
-    this.nodes.selectAll('text').text(d=>`${this.op2text[d.op]}`);
-    this.nodes.selectAll('circle').attr('fill', d=>this.sc(d.op))
+    // this.nodes.selectAll('text').text(d=>Math.random());
+    this.nodes.selectAll('circle').attr('fill', 'white')
     this.nodes.moveToFront();
 
-    this.simulation.stop();
-    this.simulation.on("tick", () => {
-      this.links
-      .attr("x1", d => d.source.x)
-      .attr("y1", d => d.source.y)
-      .attr("x2", d => d.target.x)
-      .attr("y2", d => d.target.y);
+    
+
+    
+    if(this.nodes.data()[0].pos === undefined){
+      let w = this.svg.attr('width');
+      let h = this.svg.attr('height');
+      let node2xy = {
+        0: [0.2*w, 0.5*h],
+        1: [0.3*w, 0.2*h],
+        2: [0.5*w, 0.4*h],
+        3: [0.8*w, 0.5*h],
+      };
       this.nodes
-      .attr('transform', d=>`translate(${d.x}, ${d.y})`)
-    });
+      .each((d,i)=>{
+        d.pos = [this.sx(i), this.sy(i)];
+      });
+    }
+    
+
+    this.nodes
+    // .attr('transform', d=>`translate(${d.x}, ${d.y})`);
+    .attr('transform', (d,i)=>`translate(${d.pos[0]}, ${d.pos[1]})`);
+
+    this.links
+    .selectAll('line')
+    // .attr("x1", d => d.source.x)
+    // .attr("y1", d => d.source.y)
+    // .attr("x2", d => d.target.x)
+    // .attr("y2", d => d.target.y);
+    .attr("x1", d => d.source.pos[0])
+    .attr("y1", d => d.source.pos[1])
+    .attr("x2", d => d.target.pos[0])
+    .attr("y2", d => d.target.pos[1]);
+    this.links
+    .selectAll('text')
+    // .attr('transform', d=>`translate(${0.7*d.source.x+0.3*d.target.x},${0.7*d.source.y+0.3*d.target.y})`);
+    .attr('transform', d=>`translate(${0.3*d.source.pos[0]+0.7*d.target.pos[0]},${0.3*d.source.pos[1]+0.7*d.target.pos[1]-5})`);
+    
+    let links = this.links;
+    this.nodes.call(
+      d3.drag()
+      .on('drag', function(){
+        d3.select(this).each(d=>{
+          d.pos[0] += d3.event.dx;
+          d.pos[1] += d3.event.dy;
+        })
+        .attr('transform', (d,i)=>`translate(${d.pos[0]}, ${d.pos[1]})`);
+
+        links
+        .selectAll('line')
+        .attr("x1", d => d.source.pos[0])
+        .attr("y1", d => d.source.pos[1])
+        .attr("x2", d => d.target.pos[0])
+        .attr("y2", d => d.target.pos[1]);
+        links
+        .selectAll('text')
+        .attr('transform', d=>`translate(${0.3*d.source.pos[0]+0.7*d.target.pos[0]},${0.3*d.source.pos[1]+0.7*d.target.pos[1]-5})`);
+      })
+    );
 
 
-    this.simulation
-    .alphaDecay(0.01)
-    .alpha(0.5)
-    .alphaTarget(0.0)
-    .restart();
 
-    this.nodes.call(drag(this.simulation));
+    // this.simulation.stop();
+    // this.simulation.on("tick", () => {
+    //   this.links
+    //   .selectAll('line')
+    //   .attr("x1", d => d.source.x)
+    //   .attr("y1", d => d.source.y)
+    //   .attr("x2", d => d.target.x)
+    //   .attr("y2", d => d.target.y);
+    //   this.links
+    //   .selectAll('text')
+    //   .attr('transform', d=>`translate(${0.7*d.source.x+0.3*d.target.x},${0.7*d.source.y+0.3*d.target.y})`);
+    //   this.nodes
+    //   .attr('transform', d=>`translate(${d.x}, ${d.y})`)
+    // });
+    // this.simulation
+    // .alphaDecay(0.01)
+    // .alpha(0.5)
+    // .alphaTarget(0.0)
+    // .restart();
+    // this.nodes.call(drag(this.simulation));
 
   }
 }
