@@ -85,59 +85,59 @@ window.onload = function(){
       window.controller = controller;
   });
 
-  let grandTourData = {};
-  window.grandTourData = grandTourData;
+
+  // // the Grand Tour
+  // let grandTourData = {};
+  // window.grandTourData = grandTourData;
   // utils.loadBin('data/nas-201-activations-softmax.bin', (activations, kwargs)=>{
-  utils.loadBin('data/nas-201-activations-presoftmax.bin', (activations, kwargs)=>{
-    activations = new Float32Array(activations);
-    activations = utils.reshape(activations, [15625, 1000, 10]);
-    grandTourData.positions = activations;
+  // // utils.loadBin('data/nas-201-activations-presoftmax.bin', (activations, kwargs)=>{
+  //   activations = new Float32Array(activations);
+  //   activations = utils.reshape(activations, [15625, 1000, 10]);
+  //   grandTourData.positions = activations;
 
-    utils.loadBin('data/nas-201-labels.bin', (labels, kwargs)=>{
-      labels = Array.from(new Uint8Array(labels));
-      grandTourData.labels = labels;
+  //   utils.loadBin('data/nas-201-labels.bin', (labels, kwargs)=>{
+  //     labels = Array.from(new Uint8Array(labels));
+  //     grandTourData.labels = labels;
 
-      //draw grand tour
-      let sc = d3.scaleOrdinal(d3.schemeCategory10);
-      let position = activations[0];
-      let color = labels.map(l=>{
-        let c = d3.rgb(sc(l));
-        return [c.r, c.g, c.b, 255];
-      });
+  //     //draw grand tour
+  //     let sc = d3.scaleOrdinal(d3.schemeCategory10);
+  //     let position = activations[0];
+  //     let color = labels.map(l=>{
+  //       let c = d3.rgb(sc(l));
+  //       return [c.r, c.g, c.b, 255];
+  //     });
 
-      let width = window.innerWidth/2;
-      let height = window.innerHeight;
+  //     let width = window.innerWidth/2;
+  //     let height = window.innerHeight;
 
-      let canvas = d3.select('body')
-      .append('div')
-      .style('position', 'relative')
-      .style('display', 'inline')
-      .append('canvas')
-      .attr('id', 'grandtour')
-      .attr('width', width * devicePixelRatio)
-      .attr('height', height * devicePixelRatio)
-      .style('background', '#aaaaaa')
-      .style('position', 'absolute')
-      .style('width', width)
-      .style('height', height);
+  //     let canvas = d3.select('body')
+  //     .append('div')
+  //     .style('position', 'relative')
+  //     .style('display', 'inline')
+  //     .append('canvas')
+  //     .attr('id', 'grandtour')
+  //     .attr('width', width * devicePixelRatio)
+  //     .attr('height', height * devicePixelRatio)
+  //     .style('background', '#aaaaaa')
+  //     .style('position', 'absolute')
+  //     .style('width', width)
+  //     .style('height', height);
 
-      window.gtv = new GrandTourView({
-        canvas: canvas,
-        position: position,
-        dataObj: grandTourData,
-        color: color,
-        handle: true,
-        brush: true,
-        pointSize: 8.0,
-        scaleMode: 'center',
-      });
-      lv.grandtourView = window.gtv;
-      gv.svg.moveToFront();
-      window.controller.div.moveToFront();
-
-    });
-
-  });
+  //     window.gtv = new GrandTourView({
+  //       canvas: canvas,
+  //       position: position,
+  //       dataObj: grandTourData,
+  //       color: color,
+  //       handle: true,
+  //       brush: true,
+  //       pointSize: 8.0,
+  //       scaleMode: 'center',
+  //     });
+  //     lv.grandtourView = window.gtv;
+  //     gv.svg.moveToFront();
+  //     window.controller.div.moveToFront();
+  //   });
+  // });
 
 
 }
