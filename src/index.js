@@ -148,12 +148,17 @@ window.onload = function(){
   //   });
   // });
   // 
-  // 
   
-  d3.json('./data/nas-201-GDAS-prob-rank-accuracy.json').then(data=>{
+
+
+  utils.loadBin('data/nas-201-GDAS-prefs.bin', (prefs, kwargs)=>{
     d3.json('./data/nas-201-GDAS-accuracies.json').then(GDAS_accuracies=>{  
+      
       window.GDAS_accuracies = GDAS_accuracies;
-      window.data = data;
+      prefs = new Float32Array(prefs);
+      prefs = utils.reshape(prefs, [250, 15625]);
+      window.prefs = prefs;
+  
       let kwargs = {
         id: 'prob_accuracy_view',
         widthRatio: 0.5, 
@@ -170,9 +175,9 @@ window.onload = function(){
         xLabel: 'Preference',
         yLabel: 'Valid accuracy',
       };
-      data.log_probs = math.log(data.probs);
+      let log_prefs = math.log(prefs);
       let epoch = 10;
-      x = data.log_probs.map(d=>d[epoch]);
+      x = log_prefs[epoch];
       y = GDAS_accuracies[epoch];
       let prob_accuracy_view = new LinkedView(x, y, kwargs);
      
@@ -187,7 +192,7 @@ window.onload = function(){
       .on('input', ()=>{
         let epoch = slider.property('value');
 
-        let xDest = data.log_probs.map(d=>d[epoch]);
+        let xDest = log_prefs[epoch];
         prob_accuracy_view.xLabel = `Preference (epoch ${epoch})`;
 
         let yDest = undefined;
@@ -248,7 +253,21 @@ window.onload = function(){
           prob_accuracy_view.select(...prob_accuracy_view.brush_rect);
         }
       });//slider end
-
+      
+      slider.attr('list', 'steplist0');
+      let steplist = slider.selectAll('datalist')
+      .data([0])
+      .enter()
+      .append('datalist')
+      .attr('id', 'steplist0');
+      steplist = slider.selectAll('datalist');
+      steplist.selectAll('option')
+      .data(Object.keys(GDAS_accuracies))
+      .enter()
+      .append('option');
+      steplist.selectAll('option')
+      .text(d=>d);
+      
       prob_accuracy_view.graphView = window.gv;
 
       window.prob_accuracy_view = prob_accuracy_view;
