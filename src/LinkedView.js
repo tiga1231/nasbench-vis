@@ -8,15 +8,18 @@ const CLEAR_COLOR = [0.38, 0.36, 0.35, 1.0];
 export class LinkedView{
 
   constructor(x,y, kwargs){
-    kwargs = kwargs || {};
+    this.kwargs = kwargs || {};
     var vertexShader = require("./shader/scatter-plot-shader.vs");
     var fragmentShader = require("./shader/scatter-plot-shader.fs");
 
 
 
     this.graphView = kwargs.graphView;
-    this.width = kwargs.width || window.innerWidth;
-    this.height = kwargs.height || window.innerHeight;
+    this.widthRatio = kwargs.widthRatio || 1.0;
+    this.heightRatio = kwargs.heightRatio || 1.0;
+    this.width = this.widthRatio * window.innerWidth;
+    this.height = this.heightRatio * window.innerHeight;
+
     this.margin = kwargs.margin ||  [0.1, 0.9, 0.1, 0.9];//[left, right, bottom, top]
     this.ylim = kwargs.ylim;
     this.xlim = kwargs.xlim;
@@ -24,7 +27,18 @@ export class LinkedView{
     this.parent = kwargs.parent || null;
     this.id = kwargs.id || "" + Math.floor(Math.random() * 1e9);
     this.mode = kwargs.mode || 'point';
-    this.colors = kwargs.colors || Array(x.length).fill([0.5,0.5,1.0]);
+    
+    this.xLabel = kwargs.xLabel;
+    this.yLabel = kwargs.yLabel;
+    if (kwargs.colors === undefined){
+      this.colors = Array(x.length).fill([0.5,0.5,1.0]);
+    }else if (typeof(kwargs.colors) === 'string'){
+      let c = d3.color(kwargs.colors);
+      this.colors = Array(x.length).fill([c.r/255, c.g/255, c.b/255]);
+    }else{
+      this.colors = kwargs.colors;
+    }
+
     this.zoom = kwargs.zoom ? d3.zoom().scaleExtent([0.5, 20]) : null;
     this.scale = 1.0;
 
@@ -37,10 +51,12 @@ export class LinkedView{
     }
     this.div = d3.select('body')
     .append('div')
-    .attr('class', 'plot');
+    .attr('class', 'plot')
+    .attr('id', this.id);
 
     this.overlay = this.div
     .append('svg')
+    .attr('id', this.id + '-overlay')
     .attr('class', 'overlay')
     .attr('width', this.width)
     .attr('height', this.height);
@@ -68,25 +84,46 @@ export class LinkedView{
       this.selected = Array(this.x.length * 6).fill(true);
     }
 
-    this.zoom.on('zoom', ()=>{
-      let transform = d3.event.transform;
-      this.sx.domain(transform.rescaleX(this.sx0).domain());
-      this.sy.domain(transform.rescaleY(this.sy0).domain());
-      this.gx.call(this.ax);
-      this.gy.call(this.ay);
-      gl_utils.update_uniform(this.gl, 'u_extent_x', this.sx.domain());
-      gl_utils.update_uniform(this.gl, 'u_extent_y', this.sy.domain());
-      gl_utils.update_uniform(this.gl, 'u_pointsize', this.pointSize * Math.sqrt(transform.k));
-      this.plot(false);
-      this.parent.hover(this.hoverIndex);
+    if(this.zoom){
+      this.zoom.on('zoom', ()=>{
+        let transform = d3.event.transform;
+        this.sx.domain(transform.rescaleX(this.sx0).domain());
+        this.sy.domain(transform.rescaleY(this.sy0).domain());
+        this.gx.call(this.ax);
+        this.gy.call(this.ay);
+        gl_utils.update_uniform(this.gl, 'u_extent_x', this.sx.domain());
+        gl_utils.update_uniform(this.gl, 'u_extent_y', this.sy.domain());
+        gl_utils.update_uniform(this.gl, 'u_pointsize', this.pointSize * Math.sqrt(transform.k));
+        this.plot(false, false);
+        this.parent.hover(this.hoverIndex);
+      });
+      this.overlay.call(this.zoom);
+    }
+    
+    this.plot(true, true);
 
-    });
-    this.overlay.call(this.zoom);
-    this.plot(true);
+    window.addEventListener('resize', this.onResize.bind(this));
+  }//end constructor
+
+
+  onResize(){
+    this.width = this.widthRatio * window.innerWidth;
+    this.height = this.heightRatio * window.innerHeight;
+
+    this.overlay
+    .attr('width', this.width)
+    .attr('height', this.height);
+
+    this.canvas
+    .attr('width', this.width*DPR)
+    .attr('height', this.height*DPR)
+    .style('width', this.width)
+    .style('height', this.height);
+
+    this.plot(true, true);
   }
-
   
-  plot(isFirst){
+  plot(shouldUpdateCanvas=true, shouldUpdateSvg=true){
     let x = this.x;
     let y = this.y;
     let n = x.length;
@@ -98,16 +135,27 @@ export class LinkedView{
     //data
     this.xy = zip(x.flat(),y.flat());
 
-    this.xmin = x.flat().reduce((a,b)=>Math.min(a,b), x.flat()[0]);
-    this.xmax = x.flat().reduce((a,b)=>Math.max(a,b), x.flat()[0]);
-    this.ymax = y.flat().reduce((a,b)=>Math.max(a,b), y.flat()[0]);
-    this.ymin = y.flat().reduce((a,b)=>Math.min(a,b), y.flat()[0]);
+    if(this.xlim !== undefined){
+      this.xmin = this.xlim[0];
+      this.xmax = this.xlim[1];
+    }else{
+      this.xmin = x.flat().reduce((a,b)=>Math.min(a,b), x.flat()[0]);
+      this.xmax = x.flat().reduce((a,b)=>Math.max(a,b), x.flat()[0]);
+    }
+
+    if (this.ylim !== undefined){
+      this.ymin = this.ylim[0];
+      this.ymax = this.ylim[1];
+    }else{
+      this.ymin = y.flat().reduce((a,b)=>Math.min(a,b), y.flat()[0]);
+      this.ymax = y.flat().reduce((a,b)=>Math.max(a,b), y.flat()[0]);
+    }
     
 
     //webgl plot
     gl_utils.clear(gl, CLEAR_COLOR);
 
-    if(isFirst){
+    if(shouldUpdateCanvas){
       gl_utils.update_data(gl, 'a_position',  this.xy);
       gl_utils.update_data(gl, 'a_color',  this.colors);
       if (this.mode == 'point'){
@@ -115,11 +163,11 @@ export class LinkedView{
       }else{
         gl_utils.update_data(gl, 'a_selected', Array(n*6).fill(1.0));
       }
-
       gl_utils.update_uniform(gl, 'u_margin', margin); 
       gl_utils.update_uniform(gl, 'u_pointsize', pointSize);
     }
 
+    gl.viewport(0,0, this.width*DPR, this.height*DPR);
 
     gl_utils.update_uniform(gl, 'u_mode', 0.0); //point mode
     gl_utils.update_uniform(gl, 'u_isfg', 0.0); //background mode
@@ -135,9 +183,10 @@ export class LinkedView{
 
     gl_utils.update_uniform(gl, 'u_mode', 0.0); //point mode
     gl_utils.update_uniform(gl, 'u_isfg', 1.0); //foreground mode
+    gl.drawArrays(gl.POINTS, 0, this.xy.length);
     
 
-    if(isFirst){
+    if(shouldUpdateSvg){
       //overlay (svg) plot
       this.sx0 = d3.scaleLinear().domain([this.xmin, this.xmax])
       .range([margin[0]*this.width, margin[1]*this.width]);
@@ -154,39 +203,92 @@ export class LinkedView{
 
       //axis
       this.ax = d3.axisBottom(this.sx);
-      this.gx = this.overlay.append('g')
-      .attr('class', 'x-axis')
+      this.gx = this.overlay
+      .selectAll('.x-axis')
+      .data([0])
+      .enter()
+      .append('g')
+      .attr('class', 'x-axis');
+
+      this.gx = this.overlay.selectAll('.x-axis');
+      this.gx
       .attr('transform', `translate(0, ${this.sy(this.ymin)})`)
       .call(this.ax);
 
       this.ay = d3.axisLeft(this.sy);
-      this.gy = this.overlay.append('g')
-      .attr('class', 'y-axis')
+      this.gy = this.overlay
+      .selectAll('.y-axis')
+      .data([0])
+      .enter()
+      .append('g')
+      .attr('class', 'y-axis');
+
+      this.gy = this.overlay.selectAll('.y-axis');
+      this.gy
       .attr('transform', `translate(${this.sx(this.xmin)}, 0)`)
       .call(this.ay);
 
-      //brush
-      this.brush = d3.brush()
-      .extent([
-        [this.sx(this.xmin)-10,this.sy(this.ymax)-10], 
-        [this.sx(this.xmax)+10,this.sy(this.ymin)+10]
-      ])
-      .on("brush", ()=>{
-        let selection = d3.event.selection;
-        let x0 = this.sx.invert(selection[0][0]);
-        let x1 = this.sx.invert(selection[1][0]);
-        let y0 = this.sy.invert(selection[1][1]);
-        let y1 = this.sy.invert(selection[0][1]);
-        this.select(x0,x1,y0,y1);
-      })
-      .on('end', ()=>{
-        if(d3.event.selection === null){
-          this.select(null);
+      //axis labels
+      if(this.xLabel !== undefined){
+        if(typeof(this.xLabel)=='string'){
+          this.xLabelText = this.xLabel;
         }
-      });
-      // this.overlay.append('g')
-      // .attr('class', 'brush')
-      // .call(this.brush);
+        this.xLabel = this.overlay.selectAll('.xLabel')
+        .data([this.xLabelText,])
+        .enter()
+        .append('text')
+        .attr('class', 'xLabel');
+        this.xLabel = this.overlay.selectAll('.xLabel');
+        this.xLabel
+        .attr('x', d3.mean(this.sx.range()))
+        .attr('y', this.sy(0) + 20)
+        .text(d=>d);
+      }
+      if(this.yLabel !== undefined){
+        if(typeof(this.yLabel)=='string'){
+          this.yLabelText = this.yLabel;
+        }
+        this.yLabel = this.overlay.selectAll('.yLabel')
+        .data([this.yLabelText,])
+        .enter()
+        .append('text')
+        .attr('class', 'yLabel');
+        this.yLabel = this.overlay.selectAll('.yLabel');
+        this.yLabel
+        .attr('x', this.sx.range()[0] - 40)
+        .attr('y', d3.mean(this.sy.range()))
+        .text(d=>d);
+        this.yLabel
+        .attr('transform', `rotate(-90, ${this.yLabel.attr('x')}, ${this.yLabel.attr('y')})`);
+      }
+
+      //brush
+      if(this.kwargs.brush === true){
+        this.brush = d3.brush()
+        .extent([
+          [this.sx(this.xmin)-10,this.sy(this.ymax)-10], 
+          [this.sx(this.xmax)+10,this.sy(this.ymin)+10]
+        ])
+        .on("brush", ()=>{
+          let selection = d3.event.selection;
+          let x0 = this.sx.invert(selection[0][0]);
+          let x1 = this.sx.invert(selection[1][0]);
+          let y0 = this.sy.invert(selection[1][1]);
+          let y1 = this.sy.invert(selection[0][1]);
+          this.brush_rect = [x0,x1,y0,y1];
+          this.select(...this.brush_rect);
+        })
+        .on('end', ()=>{
+          if(d3.event.selection === null){
+            this.select(null);
+            this.brush_rect = undefined;
+          }
+        });
+        this.overlay.append('g')
+        .attr('class', 'brush')
+        .call(this.brush);
+      }
+      
 
       this.overlay.on('mousemove', ()=>{
         let x = this.sx.invert(d3.event.layerX);
@@ -231,16 +333,12 @@ export class LinkedView{
           this.grandtourView.updatePosition(this.clickIndex);
         }
       });
-
-
       if(this.parent !== null){
         this.parent.select(this);
       }
     }
-    gl.drawArrays(gl.POINTS, 0, this.xy.length);
   }
   
-
   select(x0,x1,y0,y1){
     if (x0 === null){
       this.selected = Array(this.xy.length).fill(true);
@@ -271,7 +369,7 @@ export class LinkedView{
           selection,selection,selection).flat()
       );
     }
-    this.plot(false);
+    this.plot(false, false);
   }
 
 

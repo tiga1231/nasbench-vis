@@ -43,8 +43,9 @@ export class LinkedViewController{
 
     this.p.text(`selected: ${this.selected.reduce((a,b)=>a+b)}/${this.selected.length}`);
 
+    let selected = this.selected.map(d=>d?1:0);
     for (let childId in this.children){
-      this.children[childId].highlight(this.selected.map(d=>d?1:0));
+      this.children[childId].highlight(selected);
     }
   }
 
