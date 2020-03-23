@@ -1,9 +1,10 @@
 import * as gl_utils from "./gl_utils";
 import getGLprog from "webgl-utils";
 import {zip} from './utils';
+import * as utils from './utils';
 
 const DPR = window.devicePixelRatio;
-const CLEAR_COLOR = [0.38, 0.36, 0.35, 1.0];
+const CLEAR_COLOR = utils.bg_color;
 
 export class LinkedView{
 
@@ -13,12 +14,13 @@ export class LinkedView{
     var fragmentShader = require("./shader/scatter-plot-shader.fs");
 
 
-
+    this.container = kwargs.container;
     this.graphView = kwargs.graphView;
-    this.widthRatio = kwargs.widthRatio || 1.0;
-    this.heightRatio = kwargs.heightRatio || 1.0;
-    this.width = this.widthRatio * window.innerWidth;
-    this.height = this.heightRatio * window.innerHeight;
+
+    this.width = parseFloat(this.container.style('width'));
+    this.height = parseFloat(this.container.style('height'));
+    this.widthRatio = this.width / window.innerWidth;
+    this.heightRatio = this.height / window.innerHeight;
 
     this.margin = kwargs.margin ||  [0.1, 0.9, 0.1, 0.9];//[left, right, bottom, top]
     this.ylim = kwargs.ylim;
@@ -39,7 +41,7 @@ export class LinkedView{
       this.colors = kwargs.colors;
     }
 
-    this.zoom = kwargs.zoom ? d3.zoom().scaleExtent([0.5, 20]) : null;
+    this.zoom = kwargs.zoom ? d3.zoom().scaleExtent([0.5, 40]) : null;
     this.scale = 1.0;
 
     if(this.mode == 'point'){
@@ -49,12 +51,11 @@ export class LinkedView{
       this.x = x.map(d=>[d[0], d[1], d[1], d[2], d[2], d[3]]);
       this.y = y.map(d=>[d[0], d[1], d[1], d[2], d[2], d[3]]);
     }
-    this.div = d3.select('body')
-    .append('div')
+    this.container
     .attr('class', 'plot')
     .attr('id', this.id);
 
-    this.overlay = this.div
+    this.overlay = this.container
     .append('svg')
     .attr('id', this.id + '-overlay')
     .attr('class', 'overlay')
@@ -63,13 +64,13 @@ export class LinkedView{
     
     this.highlighter = this.overlay
     .append('circle')
-    .attr('r', 6)
+    .attr('r', this.pointSize)
     .attr('fill', 'none')
     .attr('stroke-width', 2)
-    .attr('stroke', 'yellow')
+    .attr('stroke', '#ffffff')
     .style('opacity', 0.0);
 
-    this.canvas = this.div
+    this.canvas = this.container
     .append('canvas')
     .attr('width', this.width*DPR)
     .attr('height', this.height*DPR)
@@ -93,7 +94,8 @@ export class LinkedView{
         this.gy.call(this.ay);
         gl_utils.update_uniform(this.gl, 'u_extent_x', this.sx.domain());
         gl_utils.update_uniform(this.gl, 'u_extent_y', this.sy.domain());
-        gl_utils.update_uniform(this.gl, 'u_pointsize', this.pointSize * Math.sqrt(transform.k));
+        gl_utils.update_uniform(this.gl, 'u_pointsize', this.pointSize * window.devicePixelRatio * Math.sqrt(transform.k));
+        this.highlighter.attr('r', this.pointSize * Math.sqrt(transform.k));
         this.plot(false, false);
         this.parent.hover(this.hoverIndex);
       });
@@ -107,6 +109,9 @@ export class LinkedView{
 
 
   onResize(){
+    this.width = this.container.node().clientWidth;
+    this.height = this.container.node().clientHeight;
+    
     this.width = this.widthRatio * window.innerWidth;
     this.height = this.heightRatio * window.innerHeight;
 
@@ -164,7 +169,7 @@ export class LinkedView{
         gl_utils.update_data(gl, 'a_selected', Array(n*6).fill(1.0));
       }
       gl_utils.update_uniform(gl, 'u_margin', margin); 
-      gl_utils.update_uniform(gl, 'u_pointsize', pointSize);
+      gl_utils.update_uniform(gl, 'u_pointsize', pointSize * window.devicePixelRatio);
     }
 
     gl.viewport(0,0, this.width*DPR, this.height*DPR);
@@ -291,8 +296,8 @@ export class LinkedView{
       
 
       this.overlay.on('mousemove', ()=>{
-        let x = this.sx.invert(d3.event.layerX);
-        let y = this.sy.invert(d3.event.layerY);
+        let x = this.sx.invert(d3.event.offsetX);
+        let y = this.sy.invert(d3.event.offsetY);
         //nearest neighbor
         let minDist = Infinity;
         let nearestNeighbor = null;
@@ -321,7 +326,20 @@ export class LinkedView{
       })
       .on('click', ()=>{
         this.clickIndex = this.hoverIndex;
-        console.log(window.data.accuracies[this.clickIndex]);
+
+        function argMax(array) {
+          return array.map((x, i) => [x, i]).reduce((r, a) => (a[0] > r[0] ? a : r))[1];
+        }
+
+        console.log('arch = ', this.clickIndex);
+        if(window.data && window.data.accuracies){
+          console.log('accuracy = ', window.data.accuracies[this.clickIndex]);
+        }
+        if(window.presoftmax){
+          console.log('pred[0] = ', argMax(window.presoftmax[this.clickIndex][0]));
+          console.log('presoftmax[0] = ', window.presoftmax[this.clickIndex][0]);
+        }
+         
       })
       .on('mouseout', ()=>{
 

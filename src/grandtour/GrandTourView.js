@@ -59,7 +59,7 @@ export class GrandTourView {
             this.s = 0;
         }
         if(dt !== undefined){
-            this.s += (dt / 1000) * 5;
+            this.s += (dt / 1000) * 10; //speed
             if (this.s > 1){
                 this.s = 1;
             }
@@ -87,7 +87,7 @@ export class GrandTourView {
         let height = this.canvas.node().height / devicePixelRatio;
 
         this.svg = d3.select(this.canvas.node().parentNode)
-        .append('svg')
+        .insert('svg', ':first-child')
         .attr('width', width)
         .attr('height', height)
         .style('position', 'absolute');

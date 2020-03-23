@@ -8,7 +8,6 @@ d3.selection.prototype.moveToFront = function() {
 };
 
 
-
 function drag(simulation){
   function dragstarted(d) {
     if (!d3.event.active && simulation)
@@ -35,9 +34,18 @@ function drag(simulation){
 
 
 export class GraphView{
-  constructor(kwargs){
 
-  
+  updateScale(width, height){
+    this.sx = d3.scaleLinear()
+      .domain([0,1,2,3])
+      .range([15, width/4,  width/2, width-15]);
+    this.sy = d3.scaleLinear()
+      .domain([0,1,2,3])
+      .range([15, height-15, height/2, height/2]);
+  }
+
+
+  constructor(kwargs){
 
     this.sc = d3.scaleOrdinal(
       ['black', 'white', d3.schemeAccent[0], d3.schemeAccent[1], d3.schemeAccent[3]]
@@ -59,14 +67,9 @@ export class GraphView{
       this.height = +this.svg.attr('height');
     }
 
-    this.sx = d3.scaleLinear()
-      .domain([0,1,2,3])
-      .range([10,10,this.width/2,this.width-10]);
-    this.sy = d3.scaleLinear()
-      .domain([0,1,2,3])
-      .range([10,this.height-10,this.height/2,this.height/2]);
+    this.updateScale(this.width, this.height);
 
-    this.graph = this.makeGraph(this.data.ops[this.i]); 
+    this.graph = this.makeGraph(this.data[this.i]); 
 
 
    
@@ -142,19 +145,18 @@ export class GraphView{
         k+=1;
       }
     }
-    window.graph = res;
     return res;
   }
 
+
   updateGraph(i){
-    this.graph = this.makeGraph(this.data.ops[i], this.graph);
+    this.graph = this.makeGraph(this.data[i], this.graph);
     this.simulation.nodes(this.graph.nodes);
     this.simulation.force('link').links(this.graph.edges);
     this.plot();
   }
 
   plot(){
-
     
     this.svg.selectAll('.link')
     .data(this.graph.edges)
@@ -206,27 +208,16 @@ export class GraphView{
     .attr('alignment-baseline', `middle`);
 
     this.nodes = this.svg.selectAll('.node');
+
     // this.nodes.selectAll('text').text(d=>Math.random());
     this.nodes.selectAll('circle').attr('fill', 'white')
     this.nodes.moveToFront();
 
     
-
-    
-    if(this.nodes.data()[0].pos === undefined){
-      let w = this.svg.attr('width');
-      let h = this.svg.attr('height');
-      let node2xy = {
-        0: [0.2*w, 0.5*h],
-        1: [0.3*w, 0.2*h],
-        2: [0.5*w, 0.4*h],
-        3: [0.8*w, 0.5*h],
-      };
-      this.nodes
-      .each((d,i)=>{
-        d.pos = [this.sx(i), this.sy(i)];
-      });
-    }
+    this.nodes
+    .each((d,i)=>{
+      d.pos = [this.sx(i), this.sy(i)];
+    });
     
 
     this.nodes

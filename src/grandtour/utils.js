@@ -1,7 +1,7 @@
 import * as d3 from 'd3';
 
 //==== constants ====
-export let CLEAR_COLOR = [.1, .1, .1];
+export let CLEAR_COLOR = [.2, .2, .2];
 
 
 export let baseColorsHex = d3.schemeCategory10;

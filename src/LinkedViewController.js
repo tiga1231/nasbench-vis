@@ -41,7 +41,7 @@ export class LinkedViewController{
       }
     }
 
-    this.p.text(`selected: ${this.selected.reduce((a,b)=>a+b)}/${this.selected.length}`);
+    this.p.text(`selected: ${this.selected.reduce((a,b)=>a+b)} / ${this.selected.length}`);
 
     let selected = this.selected.map(d=>d?1:0);
     for (let childId in this.children){
