@@ -112,8 +112,8 @@ export class GraphView{
     res.nodes = res.nodes ? res.nodes : [];
     let n = ops.length;
     ops = [
-      [null, ops[0], ops[1], ops[2]],
-      [null,  null,  ops[3], ops[4]],
+      [null, ops[0], ops[1], ops[3]],
+      [null,  null,  ops[2], ops[4]],
       [null,  null,  null,   ops[5]],
       [null,  null,  null,   null  ]
     ];

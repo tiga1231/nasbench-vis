@@ -84,9 +84,11 @@ export class REA{
 
 
   evolve(ncycle=2, nindividual=10, nsample=2){
+    this.nindividual = nindividual;
     let populationHistory = [];
     let bestHistory = [];
     let frontierHistory = [];
+    let history = [];
 
     this.init(nindividual);
     for (let i=0; i<ncycle; i++){
@@ -98,12 +100,14 @@ export class REA{
         this.best(this.history)
       ]);
       frontierHistory.push(this.closure(this.population));
+      history.push(this.history.slice(0));
     }
     return {
-      'history': new Set(this.history),
+      'history': history.map(d=>new Set(d)),
       'populationHistory': populationHistory.map(d=>new Set(d)), 
       'bestHistory': bestHistory,
       'frontierHistory': frontierHistory.map(d=>new Set(d)),
+      'nindividual': nindividual,
     };
   }
 

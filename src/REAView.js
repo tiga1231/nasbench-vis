@@ -8,6 +8,7 @@ import { REA } from "./REA";
 
 export class REAView{
   constructor(container){
+    this.epoch = 0;
     this.container = container;
     this.controller = new LinkedViewController();
 
@@ -20,7 +21,7 @@ export class REAView{
       });
       this.data = data;
       this.rea = new REA(data.ops, this.data.accuracies);
-      this.reaHistory = this.rea.evolve(250, 100, 10);
+      this.reaHistory = this.rea.evolve(250, 100, 10);//nEpoch, nIndividual, sampleSize
 
       this.create_graph_view(data.ops, this.container);
       this.create_embedding_view(data, this.container, this.controller);
@@ -57,10 +58,14 @@ export class REAView{
     .attr('max', 249)
     .attr('value', 0)
     .attr('step', 1)
-    .on('input', ()=>{
-      let epoch = +slider.property('value');
+    .on('input', (epoch)=>{
+      epoch = epoch || +slider.property('value');
+      this.epoch = epoch;
+      // cancelAnimationFrame(this.animId);
+      // this.animId = -1;
 
-      let history = this.reaHistory.history;
+      let nindividual = this.reaHistory.nindividual;
+      let history = this.reaHistory.history[epoch];
       let population = this.reaHistory.populationHistory[epoch];
       let best = this.reaHistory.bestHistory[epoch][1][0];
       let frountier = this.reaHistory.frontierHistory[epoch];
@@ -82,8 +87,8 @@ export class REAView{
           res = 3;
         }else if(population.has(i)){
           res = 2;
-        }else if(frountier.has(i)){
-          res = 1;
+        // }else if(frountier.has(i)){
+        //   res = 1;
         }else if(history.has(i)){
           res = 0;
         }else{
@@ -97,17 +102,51 @@ export class REAView{
         return [c.r/255, c.g/255, c.b/255];
       });
       this.embeddingView.plotColor(zorder);
-
-      // this.embeddingView.plotPositionColor(
-      //   this.embeddingView.x.filter((d,i)=>isInPopulation[i]==1),
-      //   this.embeddingView.y.filter((d,i)=>isInPopulation[i]==1),
-      //   this.embeddingView.colors.filter((d,i)=>isInPopulation[i]==1),
-      //   false
-      // );
-
-
     });//slider end
     this.slider = slider;
+
+    this.shouldAutoNextEpoch = false;
+    let playButton = container
+      .append('p')
+      .text('Play')
+      .style('color', 'white')
+      .attr('class', this.shouldAutoNextEpoch?'play-button fa fa-pause':'play-button fa fa-play');
+    playButton 
+    .on('mouseover', function() {
+      d3.select(this).style('opacity', 1);
+    })
+    .on('mouseout', function() {
+      d3.select(this).style('opacity', 0.7);
+    })
+    .on('click', ()=>{
+      this.shouldAutoNextEpoch = !this.shouldAutoNextEpoch;
+      //change button style
+      if (this.shouldAutoNextEpoch) {
+        playButton.attr('class', 'play-button fa fa-pause');
+      } else {
+        playButton.attr('class', 'play-button fa fa-play');
+      }
+      //button action
+      if(this.shouldAutoNextEpoch){
+        let anim = ()=>{
+          this.epoch += 1;
+          if(this.epoch >= 250){
+            this.epoch = 0;
+          }
+          this.slider.property('value',this.epoch);
+          this.slider.on('input')(this.epoch);
+          this.animId = requestAnimationFrame(anim);
+        }
+        this.animId = requestAnimationFrame(anim);
+      }else{
+        cancelAnimationFrame(this.animId);
+        this.animId = -1;
+      }
+    });
+
+
+    
+
   }
 
   create_embedding_view(data, container, controller){
