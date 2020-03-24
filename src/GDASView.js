@@ -27,20 +27,23 @@ export class GDASView{
       this.data = data;
       this.create_graph_view(data.ops, this.container);
       this.create_embedding_view(data, this.container, this.controller);
-      this.embedding_view.graphView = this.graphView;
+      this.embeddingView.graphView = this.graphView;
 
 
       utils.loadBin(prefs_fn, (prefs, _kwargs)=>{
         d3.json(GDAS_accuracies_fn).then(GDAS_accuracies=>{  
           let div = this.container.append('div')
-          .style('width', this.container.node().clientWidth/2 - 5)
+          .style('width', this.container.node().clientWidth/2 - 15)
           .style('height', this.container.node().clientHeight - 150 - 5);
 
-          this.create_GDAS_view(div, prefs, GDAS_accuracies);
-          this.prob_accuracy_view.graphView = this.graphView;
+          this.create_pref_accuracy_view(div, prefs, GDAS_accuracies);
+          this.create_slider();
+          this.prefAccuracyView.graphView = this.graphView;
             // window.controller.div.moveToFront();
         });
       });
+
+
 
     });
 
@@ -60,11 +63,11 @@ export class GDASView{
 
     let div = container.append('div')
     .style('width', container.node().clientWidth/2 - 5)
-    .style('height', container.node().clientHeight - 150 - 10);
+    .style('height', container.node().clientHeight - 150 - 15);
     window.addEventListener('resize', ()=>{
       div
       .style('width', container.node().clientWidth/2 - 5)
-      .style('width', container.node().clientHeight - 150 - 10);
+      .style('height', container.node().clientHeight - 150 - 15);
     });
     let n = data['archs'].length;
     let kwargs = {
@@ -81,9 +84,9 @@ export class GDASView{
     };
     x = data['embeddings'].map(d=>d[0]);
     y = data['embeddings'].map(d=>d[1]);
-    let embedding_view = new LinkedView(x, y, kwargs);
+    let embeddingView = new LinkedView(x, y, kwargs);
 
-    this.embedding_view = embedding_view;
+    this.embeddingView = embeddingView;
 
   }//create_embedding_view ends
 
@@ -113,12 +116,12 @@ export class GDASView{
 
 
 
-  create_GDAS_view(container, prefs, GDAS_accuracies){
+  create_pref_accuracy_view(container, prefs, GDAS_accuracies){
     prefs = new Float32Array(prefs);
     prefs = utils.reshape(prefs, [250, 15625]);
     let kwargs = {
       container: container,
-      id: 'prob_accuracy_view',
+      id: 'pref_accuracy_view',
       pointSize: 2.0,
       parent: this.controller,
       margin: [0.1, 0.95, 0.1, 0.95],
@@ -135,10 +138,16 @@ export class GDASView{
     let epoch = 10;
     let x = log_prefs[epoch];
     let y = GDAS_accuracies[epoch];
-    let prob_accuracy_view = new LinkedView(x, y, kwargs);
+    let prefAccuracyView = new LinkedView(x, y, kwargs);
+    this.prefAccuracyView = prefAccuracyView;
+    this.log_prefs = log_prefs;
+    this.GDAS_accuracies = GDAS_accuracies;
+  }
 
-    let slider = d3.select('#'+prob_accuracy_view.id)
-    .insert('input', '#prob_accuracy_view-overlay + *')
+  create_slider(){
+    let slider = d3.select('#'+this.prefAccuracyView.id)
+    // .insert('input', '#prob_accuracy_view-overlay + *')
+    .append('input')
     .attr('type', 'range')
     .attr('class', 'slider')
     .attr('min', 10)
@@ -146,67 +155,85 @@ export class GDASView{
     .attr('value', 10)
     .attr('step', 1)
     .on('input', ()=>{
-      let epoch = slider.property('value');
+      let epoch = +slider.property('value');
 
-      let xDest = log_prefs[epoch];
-      prob_accuracy_view.xLabel = `Preference (epoch ${epoch})`;
+      //update embeddingView
+      let viridis = d3.interpolateViridis;
+      let sc = d3.scaleQuantile()
+      // .domain([-13,-7])
+      .domain(d3.extent(this.log_prefs[epoch]))
+      .range(d3.range(7).map(i=>viridis(i/7)));
+      this.embeddingView.colors = this.log_prefs[epoch].map(d=>{
+        let c = d3.color(sc(d));
+        return [c.r/255, c.g/255, c.b/255];
+      });
+      // this.embeddingView.plot(true, false);
+      this.embeddingView.plotColor();
+
+
+      //update prefAccuracyView
+      let xDest = this.log_prefs[epoch];
+      this.prefAccuracyView.xLabel = `Preference (epoch ${epoch})`;
 
       let yDest = undefined;
-      if(epoch in GDAS_accuracies){
-        yDest = GDAS_accuracies[epoch];
-        prob_accuracy_view.yLabel = `Valid Accuracy (epoch ${epoch})`;
+      if(epoch in this.GDAS_accuracies){
+        yDest = this.GDAS_accuracies[epoch];
+        this.prefAccuracyView.yLabel = `Valid Accuracy (epoch ${epoch})`;
       }else{
         //find a 'floor' epoch that has a record;
         for(let e=epoch; e>=0; e--){
-          if(e in GDAS_accuracies){
-            yDest = GDAS_accuracies[e];
-            prob_accuracy_view.yLabel = `Valid Accuracy (epoch ${e})`;
+          if(e in this.GDAS_accuracies){
+            yDest = this.GDAS_accuracies[e];
+            this.prefAccuracyView.yLabel = `Valid Accuracy (epoch ${e})`;
             break;
           }
           if(e==0){
-            yDest = Array(GDAS_accuracies[10].length).fill(0.1);
-            prob_accuracy_view.yLabel = `Valid Accuracy (epoch ${10})`;
+            yDest = Array(this.GDAS_accuracies[10].length).fill(0.1);
+            this.prefAccuracyView.yLabel = `Valid Accuracy (epoch ${10})`;
           }
         }
       }
-      prob_accuracy_view.plot(false, true);
+      this.prefAccuracyView.plot(false, true);
 
 
-      //// option 1: animation, TODO debug
+      //// option 1: animation
       function f(t){
         return Math.sqrt(t);
       }
       if (window.intervalId){
         clearInterval(window.intervalId);
       }
-      let x0 = prob_accuracy_view.x;
-      let y0 = prob_accuracy_view.y;
+      let x0 = this.prefAccuracyView.x;
+      let y0 = this.prefAccuracyView.y;
       let c=0;
       let steps = 10;
       window.intervalId = window.setInterval(()=>{
         if (c<steps){
-          prob_accuracy_view.x = x0.map((xi,i)=>xi+(xDest[i]-xi)*f(c/steps));
-          prob_accuracy_view.y = y0.map((yi,i)=>yi+(yDest[i]-yi)*f(c/steps));
-          prob_accuracy_view.plot(true, false);
+          this.prefAccuracyView.x = x0.map((xi,i)=>xi+(xDest[i]-xi)*f(c/steps));
+          // this.prefAccuracyView.x = xDest;
+          this.prefAccuracyView.y = y0.map((yi,i)=>yi+(yDest[i]-yi)*f(c/steps));
+          // this.prefAccuracyView.plot(true, false);
+          this.prefAccuracyView.plotPosition();
         }else{
           if (window.intervalId){
             clearInterval(window.intervalId);
           }
         }
         c+=1;
-      }, 40);
+      }, 10);
       //// option 2: no animation
-      // prob_accuracy_view.y = yDest;
-      // prob_accuracy_view.x = xDest;
+      // this.prefAccuracyView.y = yDest;
+      // this.prefAccuracyView.x = xDest;
+      // this.prefAccuracyView.plotPosition();
       
-      prob_accuracy_view.plot(true, false);
-
+      this.prefAccuracyView.parent.hover(this.prefAccuracyView.parent.hoverIndex);
+      
       // if(prob_accuracy_view.parent !== null){
       //   prob_accuracy_view.parent.select(prob_accuracy_view);
       // }
-      // 
-      if(prob_accuracy_view.brush_rect !== undefined){
-        prob_accuracy_view.select(...prob_accuracy_view.brush_rect);
+      
+      if(this.prefAccuracyView.brush_rect !== undefined){
+        this.prefAccuracyView.select(...this.prefAccuracyView.brush_rect);
       }
     });//slider end
 
@@ -218,12 +245,13 @@ export class GDASView{
     .attr('id', 'steplist0');
     steplist = slider.selectAll('datalist');
     steplist.selectAll('option')
-    .data(Object.keys(GDAS_accuracies))
+    .data(Object.keys(this.GDAS_accuracies))
     .enter()
     .append('option');
     steplist.selectAll('option')
     .text(d=>d);
-    this.prob_accuracy_view = prob_accuracy_view;
+
+    this.slider = slider;
   }
 }
    

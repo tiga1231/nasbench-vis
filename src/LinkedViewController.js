@@ -8,6 +8,7 @@ export class LinkedViewController{
     .append('div')
     .attr('class', 'text-body');
     this.p = this.div.append('p');
+    this.hoverIndex = 0;
   }
 
   select(child){
@@ -50,6 +51,7 @@ export class LinkedViewController{
   }
 
   hover(i){
+    this.hoverIndex = i;
     for (let childId in this.children){
       let child = this.children[childId];
       

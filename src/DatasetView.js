@@ -28,11 +28,11 @@ export class DatasetView{
 
       this.create_graph_view(data.ops, this.container);
       this.create_embedding_view(data, this.container, this.controller);
-      this.embedding_view.graphView = this.graphView;
+      this.embeddingView.graphView = this.graphView;
 
       utils.loadBin(grandtour_fn, (activations, _kwargs)=>{
         utils.loadBin('data/nas-201-labels.bin', (labels, _kwargs)=>{
-          this.create_grand_tour_view(activations, labels, this.container);
+          this.create_grandtour_view(activations, labels, this.container);
         });//loadBin nas-201-labels ends
       });//loadBin grandtour_fn ends
 
@@ -41,7 +41,7 @@ export class DatasetView{
 
 
 
-  create_grand_tour_view(activations, labels, container){
+  create_grandtour_view(activations, labels, container){
     let grandTourData = {};
     activations = new Float32Array(activations);
     activations = utils.reshape(activations, [15625, 1000, 10]);
@@ -58,8 +58,8 @@ export class DatasetView{
       return [c.r, c.g, c.b, 255];
     });
 
-    let width = container.node().clientWidth/2;
-    let height = container.node().clientHeight;
+    let width = container.node().clientWidth/2 - 10;
+    let height = container.node().clientHeight - 10;
 
     let canvas = container
     .append('div')
@@ -84,7 +84,7 @@ export class DatasetView{
       scaleMode: 'center',
     });
     this.grandtourView = gtv;
-    this.embedding_view.grandtourView = gtv;
+    this.embeddingView.grandtourView = gtv;
   }
 
 
@@ -100,9 +100,13 @@ export class DatasetView{
     ]);
 
     let div = container.append('div')
-    .style('width', container.node().clientWidth / 2)
-    .style('height', container.node().clientHeight - 150 - 5);
-
+    .style('width', container.node().clientWidth/2 - 5)
+    .style('height', container.node().clientHeight - 150 - 15);
+    window.addEventListener('resize', ()=>{
+      div
+      .style('width', container.node().clientWidth/2 - 5)
+      .style('width', container.node().clientHeight - 150 - 15);
+    });
     let n = data['archs'].length;
     let kwargs = {
       container: div,
@@ -118,9 +122,9 @@ export class DatasetView{
     };
     x = data['embeddings'].map(d=>d[0]);
     y = data['embeddings'].map(d=>d[1]);
-    let embedding_view = new LinkedView(x, y, kwargs);
+    let embeddingView = new LinkedView(x, y, kwargs);
 
-    this.embedding_view = embedding_view;
+    this.embeddingView = embeddingView;
 
   }//create_embedding_view ends
 
@@ -129,7 +133,7 @@ export class DatasetView{
   create_graph_view(data, container){
     let gv_svg = container
       .append('svg')
-      .attr('width', container.node().clientWidth/2)
+      .attr('width', container.node().clientWidth/2 - 5)
       .attr('height', 150)
       .style('background', d3.rgb(...utils.bg_color.slice(0,3).map(d=>parseInt(d*255))));
     let gv = new GraphView({
@@ -137,7 +141,13 @@ export class DatasetView{
       data: data,
     });
     window.addEventListener('resize', ()=>{
-      gv_svg.attr('width', container.node().clientWidth/2 - 5);
+      gv.width = container.node().clientWidth/2 - 5;
+      gv.height = 150;
+      gv_svg
+      .attr('width', gv.width)
+      .attr('height', gv.height);
+      gv.updateScale(gv.width, gv.height);
+      gv.plot();
     });
     this.graphView = gv;
   }//create_graph_view ends

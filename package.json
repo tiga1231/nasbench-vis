@@ -14,6 +14,7 @@
     "d3": "^5.9.7",
     "mathjs": "^6.6.0",
     "numericjs": "^1.2.6",
+    "underscore": "^1.9.2",
     "webgl-utils": "^1.0.1"
   },
   "devDependencies": {

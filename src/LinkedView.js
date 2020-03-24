@@ -111,7 +111,7 @@ export class LinkedView{
   onResize(){
     this.width = this.container.node().clientWidth;
     this.height = this.container.node().clientHeight;
-    
+
     this.width = this.widthRatio * window.innerWidth;
     this.height = this.heightRatio * window.innerHeight;
 
@@ -128,6 +128,85 @@ export class LinkedView{
     this.plot(true, true);
   }
   
+  plotColor(zorder){
+    zorder = zorder || d3.range(this.xy.length);
+    let gl = this.gl;
+    let n = this.xy.length;
+    let m = zorder.length;
+
+    gl_utils.clear(gl, CLEAR_COLOR);
+    gl.viewport(0,0, this.width*DPR, this.height*DPR);
+
+    gl_utils.update_uniform(gl, 'u_mode', 0.0); //point mode
+    gl_utils.update_uniform(gl, 'u_isfg', 0.0); //background mode
+    gl.drawArrays(gl.POINTS, 0, n);
+
+    let colors = d3.range(m).map(i=>this.colors[zorder[i]]);
+    let xy = d3.range(m).map(i=>this.xy[zorder[i]]);
+    let selected = this.selected ?
+                      d3.range(m).map(i=>this.selected[zorder[i]]?1.0:0.0)
+                      : Array(m).fill(1.0);
+
+    gl_utils.update_uniform(gl, 'u_isfg', 1.0); //foreground mode
+
+    gl_utils.update_data(gl, 'a_position', xy);
+    gl_utils.update_data(gl, 'a_color', colors);
+    gl_utils.update_data(gl, 'a_selected', selected);
+    gl.drawArrays(gl.POINTS, 0, m);
+    // restore selection
+  }
+
+
+  // plotPositionColor(x, y, color, selected, clear=true){
+  //   let gl = this.gl;
+  //   if(clear){
+  //     gl_utils.clear(gl, CLEAR_COLOR);
+  //     gl.viewport(0, 0, this.width*DPR, this.height*DPR);
+  //     gl_utils.update_data(gl, 'a_position',  this.xy);
+  //     gl_utils.update_data(gl, 'a_color',  this.colors);
+  //     gl_utils.update_uniform(gl, 'u_mode', 0.0); //point mode
+  //     gl_utils.update_uniform(gl, 'u_isfg', 0.0); //background mode
+  //     gl.drawArrays(gl.POINTS, 0, this.xy.length);
+  //   }
+
+  //   let xy = zip(x.flat(),y.flat());
+  //   gl_utils.update_data(gl, 'a_position',  xy);
+  //   gl_utils.update_data(gl, 'a_color',  color);
+  //   gl_utils.update_uniform(gl, 'u_mode', 0.0); //point mode
+  //   gl_utils.update_uniform(gl, 'u_isfg', 1.0); //foreground mode
+
+  //   for (s of selected){
+  //     gl_utils.update_data(gl, 'a_selected', selected);
+  //     gl.drawArrays(gl.POINTS, 0, xy.length);
+  //   }
+
+  //   gl_utils.update_data(gl, 'a_position',  this.xy);
+  //   gl_utils.update_data(gl, 'a_color',  this.colors);
+  // }
+
+
+  plotPosition(){
+    let gl = this.gl;
+    let x = this.x;
+    let y = this.y;
+    this.xy = zip(x.flat(),y.flat());
+
+    gl_utils.clear(gl, CLEAR_COLOR);
+    gl.viewport(0,0, this.width*DPR, this.height*DPR);
+
+    gl_utils.update_data(gl, 'a_position',  this.xy);
+
+    gl_utils.update_uniform(gl, 'u_mode', 0.0); //point mode
+    gl_utils.update_uniform(gl, 'u_isfg', 0.0); //background mode
+    gl.drawArrays(gl.POINTS, 0, this.xy.length);
+
+    gl_utils.update_uniform(gl, 'u_mode', 0.0); //point mode
+    gl_utils.update_uniform(gl, 'u_isfg', 1.0); //foreground mode
+    gl.drawArrays(gl.POINTS, 0, this.xy.length);
+  }
+
+
+
   plot(shouldUpdateCanvas=true, shouldUpdateSvg=true){
     let x = this.x;
     let y = this.y;
@@ -268,7 +347,7 @@ export class LinkedView{
       }
 
       //brush
-      if(this.kwargs.brush === true){
+      if(this.kwargs.brush === true && this.brush === undefined){
         this.brush = d3.brush()
         .extent([
           [this.sx(this.xmin)-10,this.sy(this.ymax)-10], 
@@ -311,7 +390,7 @@ export class LinkedView{
         }
 
         this.parent.hover(nearestNeighbor);
-        if(this.graphView !== undefined){
+        if(this.graphView !== undefined && nearestNeighbor !== null){
           this.graphView.updateGraph(nearestNeighbor);
         }
         if(this.grandtourView !== undefined){

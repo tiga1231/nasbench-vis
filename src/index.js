@@ -44,7 +44,6 @@ function switchView(mode){
 
   //hide all views
   for (let key of Object.keys(window.views)){
-    console.log(key);
     window.views[key].container.style('display', 'none');
   }
 
@@ -93,7 +92,7 @@ window.onload = function(){
   });
 
   // switchView(container, 'NAS-Bench-201');
-  switchView('GDAS');
+  switchView('REA');
 
 }; // window.onload end
 
