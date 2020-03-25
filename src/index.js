@@ -91,8 +91,9 @@ window.onload = function(){
     switchView(mode);
   });
 
-  // switchView(container, 'NAS-Bench-201');
-  switchView('REA');
+  // switchView('NAS-Bench-201');
+  // switchView('REA');
+  switchView('GDAS');
 
 }; // window.onload end
 

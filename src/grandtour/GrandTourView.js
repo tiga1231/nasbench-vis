@@ -341,7 +341,7 @@ export class GrandTourView {
 
     if(this.centroid !== null && this.centroid !== undefined){
       let dt = 0;
-      let point = this.gt.project(this.centroid, dt);
+      let point = this.gt.project(this.centroid, dt, this.view);
       this.centroidCircle
       .attr('cx', this.sx(point[0]))
       .attr('cy', this.sy(point[1]));
@@ -504,6 +504,22 @@ export class GrandTourView {
 
 
   
+  updateView(dt){
+    //lazy init:
+    this.view = this.view || math.identity(3)._data;
+    this.spin = this.spin || 0;
+
+    //TODO: debug initHandle() etc;
+    // this.spin += dt / 1000;
+    // let cos = Math.cos(this.spin);
+    // let sin = Math.sin(this.spin);
+    // this.view = [
+    //   [ cos,  0, sin],
+    //   [   0,  1,   0],
+    //   [-sin,  0, cos],
+    //   ];
+  }
+
 
   plot(dt){
 
@@ -519,7 +535,8 @@ export class GrandTourView {
 
     //point location
     // let points = this.position.map(d=>[d[0], d[1], d[2]]);
-    let points = this.gt.project(this.position, dt);
+    this.updateView(dt);
+    let points = this.gt.project(this.position, dt, this.view);
     this.points = points;
 
     this.updateScale(points);

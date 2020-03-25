@@ -9,11 +9,11 @@ import { GrandTourView } from "./grandtour/GrandTourView";
 export class DatasetView{
   constructor(container){
 
-    // let embedding_fn = './data/nas-201-presoftmax-2.json';
+    let embedding_fn = './data/nas-201-presoftmax-2.json';
     // let embedding_fn = './data/nas-201-confusion.json';
     // let embedding_fn = './data/nas-201-arch.json';
     // let grandtour_fn = 'data/nas-201-activations-softmax.bin';
-    let embedding_fn = './data/nas-201-softmax.json';
+    // let embedding_fn = './data/nas-201-softmax.json';
     let grandtour_fn = './data/nas-201-activations-presoftmax.bin';
 
     this.container = container;

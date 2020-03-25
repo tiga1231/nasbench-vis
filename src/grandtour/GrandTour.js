@@ -92,10 +92,10 @@ export class GrandTour {
         let matrix = this.matrix;
         matrix = math.transpose(matrix);
         matrix = matrix.slice(0, 3);
-        matrix = math.transpose(matrix);
         if(view!==undefined){
             matrix = math.multiply(view, matrix);
         }
+        matrix = math.transpose(matrix);
         let res = math.multiply(data, matrix.slice(0,data[0].length));
         this.lastRes = res;
         return res;

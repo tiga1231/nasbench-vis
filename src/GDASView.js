@@ -9,12 +9,16 @@ import { GrandTourView } from "./grandtour/GrandTourView";
 
 export class GDASView{
   constructor(container){
+    this.epoch = 0;
+    this.shouldAutoNextEpoch = false;
+
     this.container = container;
     this.controller = new LinkedViewController();
 
     let prefs_fn = 'data/nas-201-GDAS-prefs.bin';
     let GDAS_accuracies_fn = './data/nas-201-GDAS-accuracies.json';
-    let embedding_fn = './data/nas-201-softmax.json';
+    // let embedding_fn = './data/nas-201-softmax.json';
+    let embedding_fn = './data/nas-201-presoftmax-2.json';
     let grandtour_fn = './data/nas-201-activations-presoftmax.bin';
 
     
@@ -37,7 +41,8 @@ export class GDASView{
           .style('height', this.container.node().clientHeight - 150 - 5);
 
           this.create_pref_accuracy_view(div, prefs, GDAS_accuracies);
-          this.create_slider();
+          this.create_slider(this.container);
+          this.create_button(this.container);
           this.prefAccuracyView.graphView = this.graphView;
             // window.controller.div.moveToFront();
         });
@@ -46,9 +51,53 @@ export class GDASView{
 
 
     });
-
-    
   }
+
+
+
+  create_button(container){
+    let playButton = container
+      .append('p')
+      .text('Play')
+      .style('color', 'white')
+      .attr('class', this.shouldAutoNextEpoch?'play-button fa fa-pause':'play-button fa fa-play');
+    playButton 
+    .on('mouseover', function() {
+      d3.select(this).style('opacity', 1);
+    })
+    .on('mouseout', function() {
+      d3.select(this).style('opacity', 0.7);
+    })
+    .on('click', ()=>{
+      this.shouldAutoNextEpoch = !this.shouldAutoNextEpoch;
+      //change button style
+      if (this.shouldAutoNextEpoch) {
+        playButton.attr('class', 'play-button fa fa-pause');
+        playButton.text('Pause');
+      } else {
+        playButton.attr('class', 'play-button fa fa-play');
+        playButton.text('Play');
+      }
+      //button action
+      if(this.shouldAutoNextEpoch){
+        let anim = ()=>{
+          this.epoch += 1;
+          if(this.epoch >= 250){
+            this.epoch = 0;
+          }
+          this.slider.property('value',this.epoch);
+          this.slider.on('input')(this.epoch, 'playButton');
+          this.animId = requestAnimationFrame(anim);
+        }
+        this.animId = requestAnimationFrame(anim);
+      }else{
+        cancelAnimationFrame(this.animId);
+        this.animId = -1;
+      }
+    });
+    this.playButton = playButton;
+  }
+
 
 
   create_embedding_view(data, container, controller){
@@ -130,7 +179,7 @@ export class GDASView{
       brush: true,
       xlim: [-14, -6],
       // xlim: [-500, 16500],
-      ylim: [0,0.6],
+      ylim: [0,1.0],
       xLabel: 'Preference',
       yLabel: 'Valid accuracy',
     };
@@ -144,8 +193,8 @@ export class GDASView{
     this.GDAS_accuracies = GDAS_accuracies;
   }
 
-  create_slider(){
-    let slider = d3.select('#'+this.prefAccuracyView.id)
+  create_slider(container){
+    let slider = container
     // .insert('input', '#prob_accuracy_view-overlay + *')
     .append('input')
     .attr('type', 'range')
@@ -154,15 +203,31 @@ export class GDASView{
     .attr('max', 249)
     .attr('value', 10)
     .attr('step', 1)
-    .on('input', ()=>{
-      let epoch = +slider.property('value');
+    .on('input', (epoch, caller)=>{
+      epoch = epoch || +slider.property('value');
+      this.epoch = epoch;
+
+      if(caller !== 'playButton'){
+        this.shouldAutoNextEpoch = false;
+        this.playButton.attr('class', 'play-button fa fa-play');
+        this.playButton.text('Play');
+        cancelAnimationFrame(this.animId);
+        this.animId = -1;
+      }
 
       //update embeddingView
       let viridis = d3.interpolateViridis;
-      let sc = d3.scaleQuantile()
-      // .domain([-13,-7])
-      .domain(d3.extent(this.log_prefs[epoch]))
-      .range(d3.range(7).map(i=>viridis(i/7)));
+
+      let extent = d3.extent(this.log_prefs[epoch]);
+      let n = 7;
+      // let sc = d3.scaleQuantile()
+      // // .domain([-13,-7])
+      // .domain(extent))
+      // .range(d3.range(7).map(i=>viridis(i/7)));
+      let sc = d3.scaleLinear()
+      .domain(d3.range(n+1).map(i=>extent[0]+(extent[1]-extent[0])/n*i))
+      .range(d3.range(n+1).map(i=>viridis(i/n)));
+
       this.embeddingView.colors = this.log_prefs[epoch].map(d=>{
         let c = d3.color(sc(d));
         return [c.r/255, c.g/255, c.b/255];
@@ -195,37 +260,38 @@ export class GDASView{
       }
       this.prefAccuracyView.plot(false, true);
 
-
-      //// option 1: animation
-      function f(t){
-        return Math.sqrt(t);
-      }
-      if (window.intervalId){
-        clearInterval(window.intervalId);
-      }
-      let x0 = this.prefAccuracyView.x;
-      let y0 = this.prefAccuracyView.y;
-      let c=0;
-      let steps = 10;
-      window.intervalId = window.setInterval(()=>{
-        if (c<steps){
-          this.prefAccuracyView.x = x0.map((xi,i)=>xi+(xDest[i]-xi)*f(c/steps));
-          // this.prefAccuracyView.x = xDest;
-          this.prefAccuracyView.y = y0.map((yi,i)=>yi+(yDest[i]-yi)*f(c/steps));
-          // this.prefAccuracyView.plot(true, false);
-          this.prefAccuracyView.plotPosition();
-        }else{
-          if (window.intervalId){
-            clearInterval(window.intervalId);
-          }
+      if(caller !== 'playButton'){
+        //// option 1: animation
+        function f(t){
+          return Math.sqrt(t);
         }
-        c+=1;
-      }, 10);
-      //// option 2: no animation
-      // this.prefAccuracyView.y = yDest;
-      // this.prefAccuracyView.x = xDest;
-      // this.prefAccuracyView.plotPosition();
-      
+        if (window.intervalId){
+          clearInterval(window.intervalId);
+        }
+        let x0 = this.prefAccuracyView.x;
+        let y0 = this.prefAccuracyView.y;
+        let c=0;
+        let steps = 10;
+        window.intervalId = window.setInterval(()=>{
+          if (c<steps){
+            this.prefAccuracyView.x = x0.map((xi,i)=>xi+(xDest[i]-xi)*f(c/steps));
+            // this.prefAccuracyView.x = xDest;
+            this.prefAccuracyView.y = y0.map((yi,i)=>yi+(yDest[i]-yi)*f(c/steps));
+            // this.prefAccuracyView.plot(true, false);
+            this.prefAccuracyView.plotPosition();
+          }else{
+            if (window.intervalId){
+              clearInterval(window.intervalId);
+            }
+          }
+          c+=1;
+        }, 10);
+      }else{
+        //// option 2: no animation
+        this.prefAccuracyView.y = yDest;
+        this.prefAccuracyView.x = xDest;
+        this.prefAccuracyView.plotPosition();
+      }
       this.prefAccuracyView.parent.hover(this.prefAccuracyView.parent.hoverIndex);
       
       // if(prob_accuracy_view.parent !== null){

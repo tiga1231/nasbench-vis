@@ -38,7 +38,7 @@ export class GraphView{
   updateScale(width, height){
     this.sx = d3.scaleLinear()
       .domain([0,1,2,3])
-      .range([15, width/4,  width/2, width-15]);
+      .range([width/4, width/3,  width/2, width/4*3]);
     this.sy = d3.scaleLinear()
       .domain([0,1,2,3])
       .range([15, height-15, height/2, height/2]);
@@ -51,7 +51,8 @@ export class GraphView{
       ['black', 'white', d3.schemeAccent[0], d3.schemeAccent[1], d3.schemeAccent[3]]
     ).domain(['none', 'skip_connect', 'nor_conv_1x1', 'nor_conv_3x3', 'avg_pool_3x3'])
 
-    this.data = kwargs.data; 
+    this.data = kwargs.data;
+    this.id = ''+Math.floor(Math.random()*10000);
     this.i = kwargs.i || 0;
 
     if(kwargs.svg === undefined){
@@ -75,7 +76,7 @@ export class GraphView{
    
 
     this.svg.append('defs').html(`
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="2" orient="auto" markerUnits="strokeWidth">
+    <marker id="arrow-${this.id}" markerWidth="10" markerHeight="10" refX="10" refY="2" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 l0,4 l6,-2 z" fill="#fff" />
     </marker>`);
 
@@ -175,7 +176,7 @@ export class GraphView{
 
     newLinks.append('line')
     .attr('stroke-width', 2)
-    .attr('marker-end', 'url(#arrow)');
+    .attr('marker-end', `url(#arrow-${this.id})`);
 
     this.links = this.svg.selectAll('.link');
 

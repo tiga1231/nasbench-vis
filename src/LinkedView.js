@@ -411,13 +411,14 @@ export class LinkedView{
         }
 
         console.log('arch = ', this.clickIndex);
-        if(window.data && window.data.accuracies){
-          console.log('accuracy = ', window.data.accuracies[this.clickIndex]);
+        if(window.view.data && window.view.data.accuracies){
+          console.log('accuracy = ', window.view.data.accuracies[this.clickIndex].toFixed(2));
         }
-        if(window.presoftmax){
-          console.log('pred[0] = ', argMax(window.presoftmax[this.clickIndex][0]));
-          console.log('presoftmax[0] = ', window.presoftmax[this.clickIndex][0]);
-        }
+
+        // if(window.presoftmax){
+        //   console.log('pred[0] = ', argMax(window.presoftmax[this.clickIndex][0]));
+        //   console.log('presoftmax[0] = ', window.presoftmax[this.clickIndex][0]);
+        // }
          
       })
       .on('mouseout', ()=>{
